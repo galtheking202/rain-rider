@@ -159,6 +159,15 @@ button{cursor:pointer;touch-action:manipulation}
   </div>
 </div>
 
+<div class="modal-bg" id="navBg" hidden>
+  <div class="modal" role="dialog" aria-label="Navigate">
+    <h3>Navigate with</h3>
+    <div class="ex"><a class="btn main" id="navG" target="_blank" rel="noopener">Google Maps</a><a class="btn main" id="navW" target="_blank" rel="noopener">Waze</a></div>
+    <p class="small" id="navNote"></p>
+    <div class="btns"><button class="btn" id="navCancel" type="button">Cancel</button></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 "use strict";
@@ -668,7 +677,6 @@ function renderResult(){
   const stopsTxt = names.length > 2 ? names.slice(1, -1).map((n, k) => `${esc(n)} ${fmtClock(c.dep + tl.stopTimes[k + 1].arrive, tz)}`).join(' · ') : '';
   b.hidden = false;
   const now = R.o.k === 'now', vias = names.length > 2;
-  const ex = now ? `<div class="ex"><a class="btn main" href="${gmapsUrl()}" target="_blank" rel="noopener">Google Maps</a><a class="btn main" href="${wazeUrl()}" target="_blank" rel="noopener">Waze</a></div>${vias ? '<p class="small">Waze takes one stop at a time, so it opens with your first stop.</p>' : ''}` : '';
   b.classList.add('res'); b.classList.toggle('open', sheetOpen);
   b.innerHTML = `
     <button class="grab" id="grab" type="button" aria-label="Show rain graphs"></button>
@@ -678,8 +686,7 @@ function renderResult(){
     ${stopsTxt ? `<p class="stops">Stops: ${stopsTxt}</p>` : ''}
     <p class="sum">${R.extra ? esc(R.extra) + ' ' : ''}${esc(rainLine())}</p>
     <div class="keys"><span><i style="background:var(--dry)"></i>Dry</span><span><i style="background:var(--low)"></i>Maybe</span><span><i style="background:var(--mid)"></i>Showers</span><span><i style="background:var(--wet)"></i>Rain</span></div>
-    ${ex}
-    <div class="btns"><button class="btn" id="later" type="button">Leave later</button><button class="btn${now ? '' : ' main'}" id="now" type="button">Go now</button></div>
+    <div class="btns"><button class="btn" id="later" type="button">Leave later</button>${now ? '<button class="btn main" id="nav" type="button">Navigate</button>' : '<button class="btn main" id="now" type="button">Go now</button>'}</div>
     <button class="hintup" id="hintup" type="button">︿ Swipe up for rain graphs</button>
     <div class="det">
       <h4>${R.o0.k === 'optimize' ? 'Rain on the ride by departure time' : 'Rain on the ride if you leave at other times'}</h4>
@@ -694,7 +701,8 @@ function renderResult(){
   $('#grab').onclick = () => setOpen(!sheetOpen);
   $('#hintup').onclick = () => setOpen(true);
   $('#rClose').onclick = () => { R = null; routeLayer.clearLayers(); drawPlaces(false); renderBottom(); };
-  $('#now').onclick = () => run({k: 'now'});
+  if ($('#now')) $('#now').onclick = () => run({k: 'now'});
+  if ($('#nav')) $('#nav').onclick = openNav;
   $('#later').onclick = openLater;
 }
 
@@ -709,6 +717,14 @@ function wazeUrl(){
   const p = resolve(S.vias.length ? S.vias[0] : S.to);
   return `https://waze.com/ul?ll=${p.lat}%2C${p.lon}&navigate=yes`;
 }
+
+function openNav(){
+  $('#navG').href = gmapsUrl(); $('#navW').href = wazeUrl();
+  $('#navNote').textContent = S.vias.length ? 'Waze takes one stop at a time, so it opens with your first stop.' : '';
+  $('#navBg').hidden = false;
+}
+$('#navCancel').onclick = () => { $('#navBg').hidden = true; };
+$('#navBg').onclick = e => { if (e.target.id === 'navBg' || e.target.closest('a')) setTimeout(() => { $('#navBg').hidden = true; }, 0); };
 
 // ---------- rain graphs ----------
 let sheetOpen = false;
