@@ -9,270 +9,129 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Rain Rider">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%230c0f14'/%3E%3Cpath d='M12 15a9 9 0 0 1 17-3 7 7 0 0 1 1 14H11a6 6 0 0 1 1-11z' fill='%232b3953'/%3E%3Cpath d='M14 30l-2 5M21 30l-2 5M28 30l-2 5' stroke='%234aa8ff' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='31' cy='11' r='4' fill='%23d4ff3a'/%3E%3C/svg%3E">
-<title>Rain Rider — dry ride planner</title>
+<title>Rain Rider</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0c0f14; --card:#141922; --card2:#1a2130; --line:#252e3f; --text:#e7ecf3; --muted:#8b97ab;
-  --accent:#d4ff3a; --accent-ink:#141a00; --rain:#4aa8ff;
+  --bg:#0c0f14; --card:#151a23; --card2:#1d2431; --line:#2a3344; --text:#eef2f7; --muted:#8d99ad;
+  --accent:#d4ff3a; --ink:#141a00;
   --dry:#35d07f; --low:#c9d84a; --mid:#ffa53a; --wet:#ff5468;
-  --r:14px;
+  --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom);
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:4px;margin-top:14px}
-.modes button{background:none;border:0;border-radius:8px;padding:9px 6px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted)}
-.modes button:hover{color:var(--text)}
-.modes button.on{background:var(--accent);color:var(--accent-ink)}
-html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
-button,input,select{font:inherit;color:inherit}
-header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#121823,#0c0f14)}
-.logo{width:34px;height:34px}
-header h1{font:700 26px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase}
-header h1 span{color:var(--accent)}
-header p{margin:0;color:var(--muted);font-size:13px}
-.layout{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px 22px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin-bottom:16px}
-.card h2{font:600 18px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;color:#cfd7e4}
-.wide{margin:0 22px 16px}
-#map{height:100%;min-height:520px;border-radius:var(--r);border:1px solid var(--line);background:#0f141c}
-.mapwrap{position:relative;margin-bottom:16px}
-label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px;font-weight:500}
-input[type=date],input[type=time],select,.stop input{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;color:var(--text);outline:none;width:100%}
-input:focus,select:focus{border-color:#4b5b78}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
-.stop{display:flex;align-items:center;gap:8px;margin-bottom:8px;position:relative}
-.badge{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--card2);border:1px solid var(--line)}
-.stop:first-child .badge{background:var(--accent);color:var(--accent-ink);border-color:transparent}
-.stop .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px}
-.stop .x:hover{color:var(--wet)}
-.field{position:relative;flex:1;min-width:0}
-.field input{padding-right:30px}
-.stop .ok{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--dry);font-size:12px;pointer-events:none}
-.sugg{position:absolute;left:34px;right:30px;top:100%;z-index:1000;background:#1c2433;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 10px 30px #0008}
-.sugg div{padding:8px 10px;cursor:pointer;border-bottom:1px solid #222b3b}
-.sugg div:hover,.sugg div.on{background:#26314a}
-.sugg small{color:var(--muted);display:block}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;cursor:pointer}
-.btn:hover{border-color:#4b5b78}
-a.btn{color:var(--text);text-decoration:none;display:inline-flex;align-items:center}
-.leaflet-bar a,.leaflet-bar a:hover{background:#141922;color:var(--text);border-bottom-color:var(--line)}
-.leaflet-bar{border:1px solid var(--line)!important}
-.leaflet-control-attribution{background:#0c0f14b3!important;color:var(--muted)!important}
-.leaflet-control-attribution a{color:#9cc6ff!important}
-.primary{width:100%;background:var(--accent);color:var(--accent-ink);border:0;border-radius:11px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;letter-spacing:.2px}
-.primary:disabled{opacity:.6;cursor:wait}
-.check{flex-direction:row;align-items:center;gap:8px;color:var(--text);font-size:13px}
-.hint{color:var(--muted);font-size:12px;margin:6px 0 0}
-#status{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px}
-#status.err{color:var(--wet)}
-.verdict{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.pill{display:inline-block;padding:4px 10px;border-radius:99px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#0c0f14}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.4 Inter,system-ui,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+#map{position:fixed;inset:0;background:#10151d}
+
+.panel{position:fixed;z-index:1000;background:var(--card);border:1px solid var(--line);box-shadow:0 10px 34px #000a}
+#top{top:calc(12px + var(--st));left:12px;right:12px;max-width:420px;border-radius:16px;padding:6px}
+#bottom{left:0;right:0;bottom:0;border-radius:20px 20px 0 0;padding:14px 16px calc(16px + var(--sb));border-bottom:0}
+@media (min-width:700px){ #bottom{left:12px;right:auto;width:420px;bottom:12px;border-radius:18px;border-bottom:1px solid var(--line);padding-bottom:16px} }
+
+.row{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 8px;position:relative}
+.row + .row{border-top:1px solid var(--line)}
+.dot{flex:0 0 12px;height:12px;border-radius:50%;border:3px solid var(--accent)}
+.dot.end{border-radius:3px;background:var(--wet);border-color:var(--wet)}
+.dot.via{border-color:var(--muted);width:10px;flex-basis:10px;height:10px}
+.row input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:16px;padding:12px 0}
+.row input::placeholder{color:var(--muted)}
+.row .x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;padding:6px}
+.chips{display:flex;gap:8px;flex:1;padding:6px 0}
+.chip{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-weight:600;font-size:14px}
+.chip.on,.chip:active{background:var(--accent);color:var(--ink);border-color:transparent}
+.loc{flex:1;font-weight:600;color:var(--accent);background:none;border:0;text-align:left;padding:12px 0}
+.add{background:none;border:0;color:var(--muted);font-weight:600;font-size:14px;padding:10px 8px 6px 30px}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:5;background:#1f2736;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 12px 30px #000b;margin-top:4px}
+.sugg div{padding:12px 14px;border-bottom:1px solid #283146}
+.sugg div:active,.sugg div.on{background:#2a3550}
+.sugg small{display:block;color:var(--muted);font-size:12px}
+
+.btns{display:flex;gap:10px}
+.btn{flex:1;border:0;border-radius:14px;padding:15px 10px;font-weight:700;font-size:16px;background:var(--card2);border:1px solid var(--line)}
+.btn.main{background:var(--accent);color:var(--ink);border-color:transparent}
+.btn:disabled{opacity:.55}
+
+.pill{display:inline-block;padding:5px 12px;border-radius:99px;font-weight:800;font-size:13px;letter-spacing:.3px;color:#0c0f14}
 .pill.dry{background:var(--dry)} .pill.low{background:var(--low)} .pill.mid{background:var(--mid)} .pill.wet{background:var(--wet)}
-.headline{font:600 22px/1.2 'Barlow Condensed',sans-serif;margin:0 0 4px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-.stat{background:var(--card2);border-radius:10px;padding:8px 10px}
-.stat b{display:block;font:600 19px/1.1 'Barlow Condensed',sans-serif}
-.stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-.itin{list-style:none;margin:10px 0;padding:0}
-.itin li{display:flex;gap:10px;align-items:flex-start;padding:6px 0}
-.itin .t{flex:0 0 92px;font-weight:600;font-variant-numeric:tabular-nums}
-.itin .leg{color:var(--muted);font-size:12px;padding-left:102px;border-left:2px dashed var(--line);margin-left:44px;padding:4px 0 4px 56px}
-.warn{background:#2a1d10;border:1px solid #5a3a12;color:#ffcf8a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px}
-.good{background:#10261b;border:1px solid #1d5236;color:#a4f0c4;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px}
-.alts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.alt{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:12px}
-.alt:hover,.alt.sel{border-color:var(--accent)}
-.alt b{font-size:14px}
+.rhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.close{background:var(--card2);border:0;border-radius:50%;width:34px;height:34px;font-size:20px;color:var(--muted)}
+.big{font-size:22px;font-weight:800;letter-spacing:-.2px}
+.sub{color:var(--muted);font-size:14px;margin-top:2px}
+.sum{margin:10px 0 4px;font-size:15px}
+.stops{color:var(--muted);font-size:13px;margin:2px 0 0}
+.keys{display:flex;gap:12px;color:var(--muted);font-size:12px;margin:10px 0 12px}
+.keys i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.loading{display:flex;align-items:center;gap:12px;padding:6px 0 4px;color:var(--muted)}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{color:#ff9aa6;margin:0 0 12px}
 
-#strip{position:relative;overflow-x:auto}
-.bars{display:flex;align-items:flex-end;gap:2px;height:120px;min-width:600px;padding-top:8px}
-.bar{flex:1;min-width:6px;border-radius:3px 3px 0 0;cursor:pointer;position:relative;opacity:.85}
-.bar:hover{opacity:1}
-.bar.sel{outline:2px solid #fff;outline-offset:1px;opacity:1}
-.bar.best::after{content:'★';position:absolute;top:-18px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:13px}
-.axis{display:flex;min-width:600px;color:var(--muted);font-size:11px;margin-top:4px}
-.axis span{flex:1;white-space:nowrap}
-.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:10px}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-
-#heat{overflow-x:auto}
-.hgrid{display:grid;gap:1px;min-width:720px;font-size:11px}
-.hcell{height:16px;border-radius:2px;position:relative}
-.hcell.path{outline:2px solid var(--accent);outline-offset:-1px;z-index:2}
-.hlab{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;line-height:16px}
-.hhead{color:var(--muted);text-align:center}
-.leaflet-container{font:12px Inter,sans-serif}
-.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#1a2130;color:var(--text)}
-.mk{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-weight:800;border:2px solid #0c0f14;box-shadow:0 2px 8px #0009}
-footer{color:var(--muted);font-size:12px;padding:0 22px 26px;line-height:1.6}
-footer a{color:#9cc6ff}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-button,.alt,.bar,.hcell,.modes button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.grid2>label{min-width:0}
-input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;display:block;min-height:40px}
-.stop .loc{flex:0 0 auto;background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--text);cursor:pointer;padding:0 10px;height:38px;font-size:15px}
-.btn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
-.mapbtn{position:absolute;top:10px;right:10px;z-index:900;background:#141922e6;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px)}
-.mapnote{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:900;background:#141922e6;border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:12px;color:var(--muted);white-space:nowrap;pointer-events:none}
-.mapnote.pick{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700;font-size:13px}
-.mapwrap.full{position:fixed;inset:0;z-index:3000;margin:0;background:var(--bg);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.mapwrap.full #map{height:100%;min-height:0;max-height:none;border-radius:0;border:0}
-.mapwrap.full .mapbtn{top:calc(10px + env(safe-area-inset-top))}
-body.lock{overflow:hidden}
-.hcorner{position:sticky;left:0;background:var(--card);z-index:4}
-.hlab{position:sticky;left:0;background:var(--card);z-index:3;cursor:default}
-.hcell{cursor:pointer}
-.hcell.tapped{box-shadow:0 0 0 2px #fff inset}
-#heatInfo{min-height:18px}
-@media (max-width:900px){
-  .layout{grid-template-columns:1fr;gap:0;padding:12px max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left))}
-  .card{padding:14px;border-radius:13px;margin-bottom:12px}
-  .wide{margin:0 12px 12px}
-  #map{min-height:0;height:55vh;max-height:460px}
-  .mapwrap{margin-bottom:12px}
-  header{padding:calc(10px + env(safe-area-inset-top)) 14px 10px;gap:10px}
-  header h1{font-size:23px}
-  header p{font-size:12px}
-  .logo{width:30px;height:30px}
-  input,select,.stop input{font-size:16px!important}
-  input[type=date],input[type=time],select,.stop input{min-height:46px;padding:11px 12px}
-  .stop .loc{height:46px;padding:0 13px}
-  .stop .x{font-size:24px;padding:6px 8px}
-  .sugg{left:0;right:0}
-  .sugg div{padding:12px}
-  .btn{min-height:44px;padding:10px 14px}
-  .check{min-height:44px;font-size:14px}
-  .check input{width:20px;height:20px}
-  .modes button{min-height:44px;font-size:14px;padding:8px 4px}
-  .primary{padding:15px;font-size:16px;border-radius:12px}
-  .headline{font-size:20px}
-  .stats{gap:6px}
-  .stat{padding:8px}
-  .stat b{font-size:18px}
-  .stat span{font-size:10px;letter-spacing:.2px}
-  .itin .t{flex-basis:52px}
-  .itin .leg{margin-left:24px;padding-left:36px}
-  .alt{padding:10px 12px;font-size:13px}
-  .hcell{height:22px}
-  .hlab{line-height:22px;font-size:11px}
-  .hgrid{min-width:0}
-  .legend{gap:10px;font-size:11px}
-  footer{padding:0 14px calc(22px + env(safe-area-inset-bottom))}
-}
+.modal-bg{position:fixed;inset:0;z-index:2000;background:#000a;display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){ .modal-bg{align-items:center} }
+.modal{background:var(--card);width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + var(--sb));border:1px solid var(--line)}
+@media (min-width:700px){ .modal{border-radius:18px} }
+.modal h3{margin:0 0 14px;font-size:19px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--card2);border-radius:13px;padding:4px;margin-bottom:14px}
+.seg button{border:0;background:none;border-radius:10px;padding:11px 4px;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--ink)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;font-weight:600;min-width:0}
+.fields input{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px;color:var(--text);min-height:48px;width:100%;min-width:0;-webkit-appearance:none;appearance:none;color-scheme:dark}
+.mhint{color:var(--muted);font-size:13px;margin:12px 0 14px;min-height:18px}
+.mk{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;border:3px solid #0c0f14;box-shadow:0 2px 10px #000a}
+.mk.s{background:var(--accent);color:var(--ink)} .mk.e{background:var(--wet);color:#fff} .mk.v{background:#e7ecf3;color:#0c0f14}
+.me{width:16px;height:16px;border-radius:50%;background:#4aa8ff;border:3px solid #fff;box-shadow:0 0 0 6px #4aa8ff44}
+.leaflet-container{font:13px Inter,sans-serif}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#1d2431;color:var(--text)}
+.leaflet-bar a,.leaflet-bar a:hover{background:#151a23;color:var(--text);border-bottom-color:var(--line)}
+.leaflet-control-attribution{background:#0c0f14aa!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:#9cc6ff!important}
+.leaflet-top{top:calc(var(--st) + 150px)}
 </style>
 </head>
 <body>
-<header>
-  <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 15a9 9 0 0 1 17-3 7 7 0 0 1 1 14H11a6 6 0 0 1 1-11z" fill="#2b3953"/><path d="M14 30l-2 5M21 30l-2 5M28 30l-2 5" stroke="#4aa8ff" stroke-width="2.4" stroke-linecap="round"/><circle cx="31" cy="11" r="4" fill="#d4ff3a"/></svg>
-  <div>
-    <h1>Rain <span>Rider</span></h1>
-    <p>See the rain on your route before you ride.</p>
+<div id="map"></div>
+
+<div class="panel" id="top"><div id="editor"></div></div>
+
+<div class="panel" id="bottom" hidden></div>
+
+<div class="modal-bg" id="laterBg" hidden>
+  <div class="modal" role="dialog" aria-label="Leave later">
+    <h3>Leave later</h3>
+    <div class="seg" id="seg">
+      <button type="button" data-k="depart">Depart at</button>
+      <button type="button" data-k="arrive">Arrive by</button>
+      <button type="button" data-k="optimize">Driest time</button>
+    </div>
+    <div class="fields">
+      <label>Day<input type="date" id="mDate"></label>
+      <label><span id="mTimeLabel">Time</span><input type="time" id="mTime"></label>
+    </div>
+    <p class="mhint" id="mHint"></p>
+    <div class="btns"><button class="btn" id="mCancel" type="button">Cancel</button><button class="btn main" id="mGo" type="button">Check rain</button></div>
   </div>
-</header>
-
-<main class="layout">
-  <aside>
-    <section class="card">
-      <h2>Your ride</h2>
-      <div id="stops"></div>
-      <div class="row" style="justify-content:space-between">
-        <div class="row"><button class="btn" id="addStop">+ Add stop</button><button class="btn" id="pickBtn">📍 Pick on map</button></div>
-        <label class="check"><input type="checkbox" id="roundTrip"> Ride back to start</label>
-      </div>
-      <p class="hint">Type a city or address, use ◎ for your current location, or tap “Pick on map”.</p>
-      <div class="modes" id="modes">
-        <button type="button" data-mode="now">Go now</button>
-        <button type="button" data-mode="later">Leave later</button>
-        <button type="button" data-mode="optimize">Optimize</button>
-      </div>
-      <p class="hint" id="modeHint"></p>
-      <div class="grid2">
-        <label data-show="later optimize">Date<input type="date" id="date"></label>
-        <label data-show="later">I'm choosing my
-          <select id="anchor"><option value="depart">Departure time</option><option value="arrive">Arrival time</option></select>
-        </label>
-        <label data-show="later"><span id="whenLabel">Departure time</span><input type="time" id="when" value="09:00"></label>
-        <label data-show="optimize">Must arrive by<input type="time" id="latest" value="12:00"></label>
-        <label data-show="optimize">Leave no earlier than<input type="time" id="earliest" value="06:00"></label>
-      </div>
-      <label data-show="later optimize">Forecast source
-        <select id="model">
-          <option value="consensus" selected>5-model consensus (ECMWF, ICON, GFS, Météo-France, UKMO): most careful</option>
-          <option value="best">Best-match high-resolution model only: fastest</option>
-        </select>
-      </label>
-      <div style="height:12px"></div>
-      <button class="primary" id="planBtn">Find the driest departure</button>
-      <div id="status"></div>
-    </section>
-
-    <section class="card" id="planCard" hidden></section>
-  </aside>
-
-  <section class="mapwrap" id="mapwrap"><div id="map"></div><button class="mapbtn" id="fullBtn" type="button">⤢ Full screen</button><div class="mapnote" id="mapNote" hidden></div></section>
-</main>
-
-<section class="card wide" id="stripCard" hidden>
-  <h2>Every departure time: rain exposure on the ride</h2>
-  <div id="strip"></div>
-  <div class="legend">
-    <span><i style="background:var(--dry)"></i>Dry</span>
-    <span><i style="background:var(--low)"></i>Low risk</span>
-    <span><i style="background:var(--mid)"></i>Showers possible</span>
-    <span><i style="background:var(--wet)"></i>Wet</span>
-    <span>Taller bar = more rain on the ride · ★ = recommended · tap a bar to see that plan</span>
-  </div>
-</section>
-
-<section class="card wide" id="heatCard" hidden>
-  <h2>Rain along the route, hour by hour</h2>
-  <div id="heat"></div>
-  <p class="hint" id="heatInfo">Tap any square for details.</p>
-  <div class="legend">
-    <span><i style="background:#1b2230"></i>No rain</span>
-    <span><i style="background:#2d5d8f"></i>Possible</span>
-    <span><i style="background:#3f8ff0"></i>Likely</span>
-    <span><i style="background:#9b6bff"></i>Heavy</span>
-    <span><i style="background:transparent;outline:2px solid var(--accent)"></i>Where you'll be on the selected plan</span>
-  </div>
-</section>
-
-<footer>
-  Forecasts: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ECMWF IFS, DWD ICON, NOAA GFS, Météo-France, UK Met Office, plus 15-minute precipitation where available) ·
-  Routing: <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a> · Places: <a href="https://photon.komoot.io/" target="_blank" rel="noopener">Photon</a> · Map tiles © Esri; route & place data © OpenStreetMap contributors.<br>
-  Forecasts are most reliable 0–3 days out. Check again on the morning of the ride. Ride times come from road routing, with no breaks added.
-</footer>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 "use strict";
-
 const MODELS = ['ecmwf_ifs025','icon_seamless','gfs_seamless','meteofrance_seamless','ukmo_seamless'];
 const MODELS_FALLBACK = ['ecmwf_ifs025','icon_seamless','gfs_seamless'];
 const ROUTERS = [
   {base:'https://router.project-osrm.org/route/v1/driving/', name:'OSRM'},
   {base:'https://routing.openstreetmap.de/routed-car/route/v1/driving/', name:'OSRM (FOSSGIS)'}
 ];
-const EXAMPLE = [
-  {name:'Tel Aviv-Yafo', lat:32.0853, lon:34.7818},
-  {name:'Haifa', lat:32.7940, lon:34.9896},
-  {name:'Tiberias', lat:32.7922, lon:35.5312}
-];
-const STEP_MIN = 15;           // departure candidates every 15 minutes
-const MAX_SAMPLES = 40;        // weather points along route
-
+const STEP_MIN = 15;
+const MAX_SAMPLES = 40;
 
 const $ = s => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let uid = 0;
-function store(k, v){ try{ localStorage.setItem('rainrider.'+k, JSON.stringify(v)); }catch(e){} }
-function load(k){ try{ const v = localStorage.getItem('rainrider.'+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
 async function fetchJSON(url, ms=20000){
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   try{
@@ -282,7 +141,7 @@ async function fetchJSON(url, ms=20000){
     return j;
   } finally { clearTimeout(t); }
 }
-function hav(a, b){ // [lat,lon] -> metres
+function hav(a, b){
   const R = 6371000, toR = Math.PI/180;
   const dLat = (b[0]-a[0])*toR, dLon = (b[1]-a[1])*toR;
   const s = Math.sin(dLat/2)**2 + Math.cos(a[0]*toR)*Math.cos(b[0]*toR)*Math.sin(dLon/2)**2;
@@ -292,198 +151,6 @@ function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0
 function addDays(s, n){ const [y,m,d] = s.split('-').map(Number); return ymd(new Date(y, m-1, d+n)); }
 function hm2min(s){ const [h,m] = (s||'0:0').split(':').map(Number); return h*60 + (m||0); }
 function fmtDur(sec){ const m = Math.round(sec/60); const h = Math.floor(m/60); return h ? `${h}h ${String(m%60).padStart(2,'0')}m` : `${m} min`; }
-const LETTER = i => String.fromCharCode(65 + i);
-
-
-let stops = (load('stops') || EXAMPLE).map(s => ({id: ++uid, ...s}));
-if (stops.length < 2) stops = EXAMPLE.map(s => ({id: ++uid, ...s}));
-
-function renderStops(){
-  const box = $('#stops'); box.innerHTML = '';
-  stops.forEach((s, i) => {
-    const row = el('div', 'stop');
-    row.appendChild(el('div', 'badge', LETTER(i)));
-    const inp = el('input'); inp.value = s.name || ''; inp.placeholder = i === 0 ? 'Start (e.g. Tel Aviv)' : (i === stops.length-1 ? 'Destination' : 'Via');
-    inp.autocomplete = 'off';
-    const field = el('div', 'field'); field.appendChild(inp);
-    if (s.lat != null) field.appendChild(el('span', 'ok', '✓'));
-    row.appendChild(field);
-    if (i === 0) { const lb = el('button', 'loc', '◎'); lb.type = 'button'; lb.title = 'Use my current location'; lb.setAttribute('aria-label', 'Use my current location'); lb.onclick = useMyLocation; row.appendChild(lb); }
-    const x = el('button', 'x', '×'); x.title = 'Remove'; x.disabled = stops.length <= 2; x.hidden = stops.length <= 2;
-    x.onclick = () => { stops.splice(i, 1); renderStops(); drawStopsOnMap(); saveForm(); };
-    row.appendChild(x);
-    attachAutocomplete(inp, row, s);
-    box.appendChild(row);
-  });
-}
-function attachAutocomplete(inp, row, s){
-  let timer = null, list = null, items = [], active = -1;
-  const close = () => { if (list) { list.remove(); list = null; } active = -1; };
-  const choose = it => {
-    s.name = it.name; s.lat = it.lat; s.lon = it.lon; inp.value = it.name; close();
-    renderStops(); drawStopsOnMap(true); saveForm();
-  };
-  inp.addEventListener('input', () => {
-    s.lat = s.lon = null; const ok = row.querySelector('.ok'); if (ok) ok.remove();
-    clearTimeout(timer);
-    const q = inp.value.trim();
-    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
-    if (m) { items = [{name: `${(+m[1]).toFixed(4)}, ${(+m[2]).toFixed(4)}`, label: 'Coordinates', lat: +m[1], lon: +m[2]}]; show(); return; }
-    if (q.length < 2) { close(); return; }
-    timer = setTimeout(async () => { items = await geocode(q); if (inp.value.trim() === q) show(); }, 350);
-  });
-  inp.addEventListener('keydown', e => {
-    if (!list) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; [...list.children].forEach((c,j) => c.classList.toggle('on', j === active)); }
-    else if (e.key === 'Enter') { e.preventDefault(); choose(items[Math.max(0, active)]); }
-    else if (e.key === 'Escape') close();
-  });
-  inp.addEventListener('blur', () => setTimeout(close, 200));
-  function show(){
-    close(); if (!items.length) return;
-    list = el('div', 'sugg');
-    items.forEach(it => { const d = el('div', null, `${esc(it.name)}<small>${esc(it.label || '')}</small>`); d.onmousedown = e => { e.preventDefault(); choose(it); }; list.appendChild(d); });
-    row.appendChild(list);
-  }
-}
-async function geocode(q){
-  const out = [];
-  try {
-    const j = await fetchJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en`, 8000);
-    for (const f of j.features || []) {
-      const p = f.properties || {}; const [lon, lat] = f.geometry.coordinates;
-      const name = p.name || [p.street, p.housenumber].filter(Boolean).join(' ') || p.city || q;
-      const label = [...new Set([p.street && p.name !== p.street ? p.street : null, p.city !== name ? p.city : null, p.state, p.country].filter(Boolean))].join(', ');
-      out.push({name, label, lat, lon});
-    }
-  } catch (e) {}
-  if (!out.length) {
-    try {
-      const j = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en`, 8000);
-      for (const r of j.results || []) out.push({name: r.name, label: [r.admin1, r.country].filter(Boolean).join(', '), lat: r.latitude, lon: r.longitude});
-    } catch (e) {}
-  }
-  return out;
-}
-async function reverseName(lat, lon){
-  try {
-    const j = await fetchJSON(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&lang=en`, 6000);
-    const p = (j.features && j.features[0] && j.features[0].properties) || {};
-    return p.name || p.city || p.town || p.village || p.county || null;
-  } catch (e) { return null; }
-}
-$('#addStop').onclick = () => { stops.push({id: ++uid, name: '', lat: null, lon: null}); renderStops(); const ins = document.querySelectorAll('#stops input'); ins[ins.length-1].focus(); };
-
-
-function initForm(){
-  const today = new Date(); const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
-  const di = $('#date'); di.min = ymd(today); di.max = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate()+14));
-  const saved = load('form') || {};
-  di.value = (saved.date && saved.date >= di.min && saved.date <= di.max) ? saved.date : ymd(tomorrow);
-  for (const k of ['anchor','when','earliest','latest','model']) if (saved[k] != null) $('#'+k).value = saved[k];
-  $('#roundTrip').checked = !!saved.roundTrip;
-  mode = ['now','later','optimize'].includes(saved.mode) ? saved.mode : 'now';
-  applyMode();
-}
-function saveForm(){
-  store('stops', stops.map(({name,lat,lon}) => ({name,lat,lon})));
-  store('form', {mode, date: $('#date').value, anchor: $('#anchor').value, when: $('#when').value, earliest: $('#earliest').value, latest: $('#latest').value, model: $('#model').value, roundTrip: $('#roundTrip').checked});
-}
-let mode = 'now';
-const MODE_TEXT = {
-  now: ['Leaving right now. You\'ll see the rain waiting for you along the route.', 'Check rain on my ride now'],
-  later: ['Pick a date, then either when you leave or when you need to arrive.', 'Check rain on my ride'],
-  optimize: ['Set when you need to arrive. Rain Rider picks the departure time with the least rain.', 'Plan the driest departure']
-};
-function applyMode(){
-  document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
-  document.querySelectorAll('[data-show]').forEach(e => { e.hidden = !e.dataset.show.split(' ').includes(mode); });
-  $('#modeHint').textContent = MODE_TEXT[mode][0];
-  $('#planBtn').textContent = MODE_TEXT[mode][1];
-  $('#whenLabel').textContent = $('#anchor').value === 'arrive' ? 'Arrive at' : 'Leave at';
-}
-document.querySelectorAll('#modes button').forEach(b => b.onclick = () => { mode = b.dataset.mode; applyMode(); saveForm(); });
-$('#anchor').addEventListener('change', applyMode);
-document.querySelectorAll('.grid2 input,.grid2 select,#model,#roundTrip').forEach(e => e.addEventListener('change', saveForm));
-
-
-const TOUCH = L.Browser.mobile || (window.matchMedia && matchMedia('(pointer:coarse)').matches);
-const map = L.map('map', {zoomControl: true, dragging: !TOUCH, scrollWheelZoom: !TOUCH, tap: true}).setView([32.4, 35.0], 8);
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {maxZoom: 16, attribution: 'Tiles © Esri'}).addTo(map);
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom: 16}).addTo(map);
-let stopLayer = L.layerGroup().addTo(map), routeLayer = L.layerGroup().addTo(map), sampleLayer = L.layerGroup().addTo(map);
-function drawStopsOnMap(fit){
-  stopLayer.clearLayers();
-  const pts = [];
-  stops.forEach((s, i) => {
-    if (s.lat == null) return;
-    pts.push([s.lat, s.lon]);
-    L.marker([s.lat, s.lon], {icon: L.divIcon({className: '', html: `<div class="mk">${LETTER(i)}</div>`, iconSize: [26,26], iconAnchor: [13,13]})})
-      .bindPopup(`<b>${LETTER(i)}</b> · ${esc(s.name)}`).addTo(stopLayer);
-  });
-  if (fit && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.25), {maxZoom: 11});
-}
-let picking = false, fullMap = false;
-function setNote(){
-  const n = $('#mapNote');
-  if (picking) { n.hidden = false; n.className = 'mapnote pick'; n.textContent = 'Tap the map to place a stop'; }
-  else if (TOUCH && !fullMap) { n.hidden = false; n.className = 'mapnote'; n.textContent = 'Pinch to zoom · ⤢ Full screen to move around'; }
-  else n.hidden = true;
-}
-function setFull(on){
-  fullMap = on;
-  $('#mapwrap').classList.toggle('full', on);
-  document.body.classList.toggle('lock', on);
-  $('#fullBtn').textContent = on ? '✕ Close map' : '⤢ Full screen';
-  if (TOUCH) { if (on) map.dragging.enable(); else map.dragging.disable(); }
-  setTimeout(() => map.invalidateSize(), 60);
-  setNote();
-}
-$('#fullBtn').onclick = () => setFull(!fullMap);
-$('#pickBtn').onclick = () => {
-  picking = !picking;
-  $('#pickBtn').classList.toggle('on', picking);
-  $('#pickBtn').textContent = picking ? '✕ Cancel picking' : '📍 Pick on map';
-  if (picking && TOUCH) setFull(true); else setNote();
-  if (picking && !TOUCH) $('#mapwrap').scrollIntoView({behavior: 'smooth', block: 'center'});
-};
-setNote();
-function placeStop(lat, lng, name){
-  const empty = stops.find(s => s.lat == null);
-  const s = empty || (stops.push({id: ++uid}), stops[stops.length-1]);
-  s.lat = +(+lat).toFixed(5); s.lon = +(+lng).toFixed(5); s.name = name || `${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}`;
-  renderStops(); drawStopsOnMap(); saveForm();
-  return s;
-}
-function useMyLocation(){
-  const st = $('#status');
-  if (!navigator.geolocation || !window.isSecureContext) {
-    st.className = 'err';
-    st.textContent = 'Location only works when the app is opened from a web address (https://…), not from a downloaded file. Type your start instead.';
-    return;
-  }
-  st.className = ''; st.textContent = 'Finding your location…';
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const {latitude: lat, longitude: lon} = pos.coords;
-    const s0 = stops[0];
-    s0.lat = +lat.toFixed(5); s0.lon = +lon.toFixed(5); s0.name = 'My location';
-    renderStops(); drawStopsOnMap(true); saveForm();
-    st.textContent = 'Start set to your current location.';
-    const nm = await reverseName(lat, lon); if (nm) { s0.name = `My location (${nm})`; renderStops(); drawStopsOnMap(); saveForm(); }
-  }, err => {
-    st.className = 'err';
-    st.textContent = err.code === 1 ? 'Location permission was denied. Allow location for this page, or type your start.' : 'Could not get your location. Type your start instead.';
-  }, {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000});
-}
-map.on('click', async e => {
-  if (!picking) return;
-  picking = false; $('#pickBtn').classList.remove('on'); $('#pickBtn').textContent = '📍 Pick on map';
-  if (fullMap) setFull(false); else setNote();
-  const {lat, lng} = e.latlng;
-  const s = placeStop(lat, lng);
-  const nm = await reverseName(lat, lng); if (nm) { s.name = nm; renderStops(); drawStopsOnMap(); saveForm(); }
-});
-
 
 async function getRoute(pts){
   const coords = pts.map(p => `${(+p.lon).toFixed(5)},${(+p.lat).toFixed(5)}`).join(';');
@@ -600,8 +267,6 @@ function classify(e){
   if (e.maxProb < 65 && e.mm < 2) return 'mid';
   return 'wet';
 }
-const LABEL = {dry: 'Dry', low: 'Low risk', mid: 'Showers possible', wet: 'Wet'};
-const COLOR = {dry: '#35d07f', low: '#c9d84a', mid: '#ffa53a', wet: '#ff5468'};
 
 function evaluate(dep, tl, wx){
   let cost = 0, maxProb = 0, mm = 0, rainMin = 0, wetMin = 0, minT = Infinity, maxT = -Infinity, maxGust = 0;
@@ -622,273 +287,294 @@ function evaluate(dep, tl, wx){
   return e;
 }
 
-let R = null; // current result
-async function plan(){
-  const btn = $('#planBtn'), st = $('#status');
-  const pts = stops.filter(s => s.lat != null);
-  if (stops.some(s => s.lat == null && (s.name || '').trim())) { st.className = 'err'; st.textContent = 'Pick each stop from the suggestions list (or remove empty ones).'; return; }
-  if (pts.length < 2) { st.className = 'err'; st.textContent = 'Add at least a start and a destination.'; return; }
-  const route_pts = $('#roundTrip').checked ? [...pts, pts[0]] : pts;
-  const names = route_pts.map(s => s.name);
-  saveForm();
-  btn.disabled = true; st.className = '';
+
+
+// ---------- places ----------
+async function geocode(q){
+  const out = [];
+  const near = map.getCenter();
   try {
-    st.textContent = 'Calculating road route…';
-    const route = await getRoute(route_pts);
-    const tl = buildTimeline(route, 0, 1);
-    const date = mode === 'now' ? ymd(new Date()) : $('#date').value;
-    if (!date) throw new Error('Pick a date.');
-    const consensus = mode === 'now' || $('#model').value === 'consensus';
-    st.textContent = `Fetching ${consensus ? '5-model' : 'high-res'} rain forecast for ${tl.samples.length} points along ${Math.round(route.distance/1000)} km…`;
-    const wx = await getWeather(tl.samples, date, consensus);
-    const tz = wx[0].tz, dayStart = wx[0].t0;
-    const nowUnix = Date.now()/1000;
-    let cands = [], note = '', bestIdx = 0;
-    if (mode === 'now') {
-      cands = [evaluate(Math.ceil(nowUnix/60)*60, tl, wx)];
-    } else if (mode === 'later') {
-      const t = hm2min($('#when').value) * 60;
-      const byArrival = $('#anchor').value === 'arrive';
-      const dep = byArrival ? dayStart + t - tl.totalSec : dayStart + t;
-      if (dep < dayStart) throw new Error(`This ride takes ${fmtDur(tl.totalSec)}, so arriving at ${$('#when').value} means leaving the day before. Pick a later arrival time.`);
-      if (dep < nowUnix - 60) note = `That departure time (${new Intl.DateTimeFormat('en-GB', {hour:'2-digit', minute:'2-digit', timeZone: tz}).format(new Date(dep*1000))}) has already passed. Showing the forecast for it anyway.`;
-      cands = [evaluate(dep, tl, wx)];
-    } else {
-      const earliest = hm2min($('#earliest').value), latest = hm2min($('#latest').value);
-      const lastStart = latest*60 - tl.totalSec;
-      if (lastStart < earliest*60) throw new Error(`This ride takes ${fmtDur(tl.totalSec)}, so it can't fit between ${$('#earliest').value} and ${$('#latest').value}. Allow an earlier start or a later arrival.`);
-      for (let m = earliest; m*60 <= lastStart; m += STEP_MIN) {
-        const dep = dayStart + m*60;
-        if (dep < nowUnix + 5*60) continue;
-        cands.push(evaluate(dep, tl, wx));
-      }
-      if (!cands.length) throw new Error(`It's too late today to leave after ${$('#earliest').value} and arrive by ${$('#latest').value}. Pick a later arrival time or another date.`);
-      const minCost = Math.min(...cands.map(c => c.cost));
-      const arriveBy = dayStart + latest*60;
-      cands.forEach(c => { c.score = c.cost + (arriveBy - c.arr)/3600 * Math.max(0.15, minCost*0.04); });
-      bestIdx = cands.reduce((bi, c, i) => c.score < cands[bi].score ? i : bi, 0);
+    const j = await fetchJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en&lat=${near.lat.toFixed(3)}&lon=${near.lng.toFixed(3)}`, 8000);
+    for (const f of j.features || []) {
+      const p = f.properties || {}; const [lon, lat] = f.geometry.coordinates;
+      const name = p.name || [p.street, p.housenumber].filter(Boolean).join(' ') || p.city || q;
+      const label = [...new Set([p.street && p.name !== p.street ? p.street : null, p.city !== name ? p.city : null, p.state, p.country].filter(Boolean))].join(', ');
+      out.push({name, label, lat, lon});
     }
-    R = {mode, route, tl, wx, tz, dayStart, cands, bestIdx, sel: bestIdx, names, date, consensus, note,
-         nModels: Math.max(...wx.map(w => w.models.length))};
-    st.textContent = `Route via ${route.source}. Forecast updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.`;
-    renderAll(true);
-    if (window.matchMedia && matchMedia('(max-width:900px)').matches) $('#planCard').scrollIntoView({behavior: 'smooth', block: 'start'});
-  } catch (e) {
-    console.error(e);
-    R = null;
-    ['#planCard', '#stripCard', '#heatCard'].forEach(s => $(s).hidden = true);
-    routeLayer.clearLayers(); sampleLayer.clearLayers();
-    st.className = 'err'; st.textContent = /failed to fetch|abort|network|HTTP \d/i.test(e.message) ? `Couldn't reach the routing or forecast service (${e.message}). Check your connection and try again.` : e.message;
-  } finally { btn.disabled = false; }
-}
-$('#planBtn').onclick = plan;
-
-
-function fmtT(unix){ return new Intl.DateTimeFormat('en-GB', {hour:'2-digit', minute:'2-digit', timeZone: R.tz}).format(new Date(unix*1000)); }
-function fmtDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'}); }
-function riskColor(w){
-  const p = w.prob, r = w.rate;
-  if (r >= 2 || p >= 70) return COLOR.wet;
-  if (r >= 0.3 || p >= 45) return COLOR.mid;
-  if (p >= 20 || r >= 0.1) return COLOR.low;
-  return COLOR.dry;
-}
-function rainCellColor(p, r){
-  if (r >= 2.5) return '#9b6bff';
-  if (p >= 65 || r >= 1) return '#3f8ff0';
-  if (p >= 40 || r >= 0.3) return '#2f6fb8';
-  if (p >= 20 || r >= 0.1) return '#2d5d8f';
-  if (p >= 8) return '#22344d';
-  return '#1b2230';
-}
-const WMO = {0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Light showers',81:'Showers',82:'Violent showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + hail'};
-
-function renderAll(fit){
-  renderPlan(); renderMap(fit); renderStrip(); renderHeat();
-}
-
-function dryWindows(){
-  const out = []; let cur = null;
-  R.cands.forEach(c => {
-    if (c.cls === 'dry' || c.cls === 'low') { if (!cur) cur = {a: c.dep, b: c.dep, dry: c.cls === 'dry'}; else { cur.b = c.dep; } }
-    else if (cur) { out.push(cur); cur = null; }
-  });
-  if (cur) out.push(cur);
+  } catch (e) {}
+  if (!out.length) {
+    try {
+      const j = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en`, 8000);
+      for (const r of j.results || []) out.push({name: r.name, label: [r.admin1, r.country].filter(Boolean).join(', '), lat: r.latitude, lon: r.longitude});
+    } catch (e) {}
+  }
   return out;
 }
-function alternatives(){
-  const sorted = R.cands.map((c, i) => ({c, i})).sort((x, y) => x.c.score - y.c.score);
-  const picks = [];
-  for (const s of sorted) { if (picks.every(p => Math.abs(p.c.dep - s.c.dep) >= 3600*1.5)) picks.push(s); if (picks.length === 3) break; }
-  return picks;
+let myPos = null;
+function locate(){
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation || !window.isSecureContext) return rej(new Error('Your location only works when the app is opened from its web address. Choose a starting point instead.'));
+    navigator.geolocation.getCurrentPosition(p => {
+      myPos = {name: 'My location', lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5)};
+      showMe(); res(myPos);
+    }, e => rej(new Error(e.code === 1 ? 'Location permission was denied. Choose a starting point instead.' : 'Couldn\'t get your location. Choose a starting point instead.')),
+    {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000});
+  });
 }
 
-function renderPlan(){
-  const c = R.cands[R.sel], tl = R.tl, card = $('#planCard');
-  card.hidden = false;
-  const isBest = R.sel === R.bestIdx, opt = R.mode === 'optimize';
-  const stopsHtml = R.names.map((n, k) => {
-    const st = tl.stopTimes[k];
-    let t;
-    if (k === 0) t = `${fmtT(c.dep)}`;
-    else if (k === R.names.length-1) t = `${fmtT(c.dep + st.arrive)}`;
-    else t = st.arrive === st.leave ? fmtT(c.dep + st.arrive) : `${fmtT(c.dep + st.arrive)}–${fmtT(c.dep + st.leave)}`;
-    const verb = k === 0 ? 'Leave' : (k === R.names.length-1 ? 'Arrive' : 'Pass');
-    let legHtml = '';
-    if (k < R.names.length-1) {
-      const segs = c.segs.filter((s, i) => tl.samples[i].leg === k);
-      const mp = Math.round(Math.max(0, ...segs.map(s => s.prob)));
-      const leg = R.route.legs[k];
-      const worst = segs.reduce((a, s) => (s.prob > a.prob ? s : a), segs[0] || {prob: 0});
-      const cls = mp < 20 ? 'dry' : mp < 40 ? 'low' : mp < 65 ? 'mid' : 'wet';
-      legHtml = `<li class="leg">${Math.round(leg.distance/1000)} km · ${fmtDur(leg.duration)} · <span style="color:${COLOR[cls]}">max ${mp}% rain chance</span>${worst && worst.prob >= 30 ? ` around ${fmtT(worst.t)}` : ''}</li>`;
-    }
-    return `<li><span class="t">${t}</span><span>${verb} <b>${esc(n)}</b></span></li>${legHtml}`;
-  }).join('');
+// ---------- state ----------
+// from: null (not chosen yet) | {me:true} | {typing:true} | place
+const S = {from: null, vias: [], to: null};
+let R = null, busy = false;
 
-  const warns = [];
-  if (R.note) warns.push(R.note);
-  if (c.rainMin >= 1) warns.push(`About ${Math.round(c.rainMin)} min of the ride is in likely rain (≈${c.mm.toFixed(1)} mm). Pack the rain suit.`);
-  if (c.wetMin >= 5 && c.rainMin < 1) warns.push(`Roads may still be wet for ~${Math.round(c.wetMin)} min of the ride from earlier rain. Watch braking on painted lines and roundabouts.`);
-  if (c.maxGust >= 50) warns.push(`Gusts up to ${Math.round(c.maxGust)} km/h on the route. Expect crosswinds on open stretches.`);
-  if (c.minT <= 8) warns.push(`Cold: down to ${Math.round(c.minT)}°C. Layer up.`);
-  const thunder = c.segs.some(s => s.code >= 95);
-  if (thunder) warns.push('Thunderstorms are forecast along part of the route at this time.');
-  const far = (new Date(R.date) - new Date(ymd(new Date())))/864e5;
-  if (far > 4) warns.push(`This is ${Math.round(far)} days out, so treat it as a rough guide and re-check closer to the day.`);
+// ---------- map ----------
+const map = L.map('map', {zoomControl: !L.Browser.mobile, attributionControl: true}).setView([31.9, 34.95], 9);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {maxZoom: 16, attribution: 'Tiles © Esri · © OpenStreetMap · Open-Meteo'}).addTo(map);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom: 16}).addTo(map);
+if (map.zoomControl) map.zoomControl.setPosition('topright');
+const placeLayer = L.layerGroup().addTo(map), routeLayer = L.layerGroup().addTo(map);
+let meMarker = null;
+function showMe(){
+  if (!myPos) return;
+  if (meMarker) meMarker.setLatLng([myPos.lat, myPos.lon]);
+  else meMarker = L.marker([myPos.lat, myPos.lon], {icon: L.divIcon({className: '', html: '<div class="me"></div>', iconSize: [16,16], iconAnchor: [8,8]}), interactive: false}).addTo(map);
+}
+function fromPlace(){ return S.from && S.from.me ? myPos : (S.from && S.from.lat != null ? S.from : null); }
+function drawPlaces(fit){
+  placeLayer.clearLayers();
+  const pts = [];
+  const add = (p, cls, txt) => { if (!p) return; pts.push([p.lat, p.lon]); L.marker([p.lat, p.lon], {icon: L.divIcon({className: '', html: `<div class="mk ${cls}">${txt}</div>`, iconSize: [28,28], iconAnchor: [14,14]})}).bindPopup(esc(p.name)).addTo(placeLayer); };
+  const f = fromPlace(); if (f && !(S.from && S.from.me)) add(f, 's', 'A');
+  if (f && S.from && S.from.me) pts.push([f.lat, f.lon]);
+  S.vias.forEach((v, i) => v.lat != null && add(v, 'v', i + 1));
+  add(S.to, 'e', 'B');
+  if (fit && pts.length) fitTo(pts);
+}
+function fitTo(pts){
+  const top = $('#top').getBoundingClientRect().bottom + 12;
+  const bottom = $('#bottom').hidden ? 24 : window.innerHeight - $('#bottom').getBoundingClientRect().top + 16;
+  const desk = window.innerWidth >= 700;
+  if (pts.length === 1) { map.setView(pts[0], 12); return; }
+  map.fitBounds(L.latLngBounds(pts), {paddingTopLeft: [desk ? 450 : 24, top], paddingBottomRight: [24, desk ? 24 : bottom], maxZoom: 13});
+}
 
-  const win = dryWindows();
-  const winTxt = win.length ? win.map(w => `${fmtT(w.a)}${w.b > w.a ? '–' + fmtT(w.b) : ''}`).join(', ') : 'none: rain is expected at every departure time';
-  const alts = alternatives();
-
-  card.innerHTML = `
-    <h2>${opt ? (isBest ? 'Optimized plan' : 'Selected plan') : 'Your ride'} · ${R.mode === 'now' ? 'leaving now' : esc(fmtDate(R.date))}</h2>
-    <div class="verdict"><span class="pill ${c.cls}">${LABEL[c.cls]}</span><span style="color:var(--muted);font-size:12px">${R.consensus && R.nModels ? R.nModels + ' weather models + probability ensemble' : 'High-resolution best-match model'}</span></div>
-    <p class="headline">Leave ${esc(R.names[0])} at ${fmtT(c.dep)}, arrive ${esc(R.names[R.names.length-1])} at ${fmtT(c.arr)}</p>
-    <div class="stats">
-      <div class="stat"><b>${Math.round(c.maxProb)}%</b><span>Max rain chance</span></div>
-      <div class="stat"><b>${c.mm < 0.05 ? '0' : c.mm.toFixed(1)} mm</b><span>Rain on ride</span></div>
-      <div class="stat"><b>${Math.round(c.rainMin)} min</b><span>Riding in rain</span></div>
-      <div class="stat"><b>${Math.round(R.route.distance/1000)} km</b><span>Distance</span></div>
-      <div class="stat"><b>${fmtDur(R.tl.rideSec)}</b><span>Riding time</span></div>
-      <div class="stat"><b>${isFinite(c.minT) ? Math.round(c.minT) + '–' + Math.round(c.maxT) + '°' : '–'}</b><span>Temp · gusts ${Math.round(c.maxGust)} km/h</span></div>
-    </div>
-    <ul class="itin">${stopsHtml}</ul>
-    ${warns.length ? warns.map(w => `<div class="warn">${esc(w)}</div>`).join('') : c.cls === 'dry' ? `<div class="good">No rain expected on any part of the route at these times.</div>` : `<div class="warn">Showers are possible along the route (up to ${Math.round(c.maxProb)}% chance), but little or no rain is forecast. Keep the rain gear handy.</div>`}
-    ${opt ? `<p class="hint" style="margin-top:12px"><b style="color:var(--text)">Dry / low-risk departure windows before your arrival time:</b> ${winTxt}</p>
-    <div class="alts">${alts.map(a => `<div class="alt ${a.i === R.sel ? 'sel' : ''}" data-i="${a.i}"><b>${fmtT(a.c.dep)}</b> · <span style="color:${COLOR[a.c.cls]}">${LABEL[a.c.cls]}</span> · ${Math.round(a.c.maxProb)}%</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:12px">
-      ${navigator.share ? '<button class="btn" id="shareBtn">Share plan</button>' : ''}
-      <button class="btn" id="copyBtn">Copy plan</button>
-      <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="${gmapsUrl()}">Open route in Google Maps ↗</a>
-    </div>`;
-  card.querySelectorAll('.alt').forEach(a => a.onclick = () => { R.sel = +a.dataset.i; renderAll(false); });
-  if ($('#shareBtn')) $('#shareBtn').onclick = async () => { try { await navigator.share({title: 'Ride plan', text: planText()}); } catch (e) {} };
-  $('#copyBtn').onclick = async () => {
-    const txt = planText();
-    try { await navigator.clipboard.writeText(txt); $('#copyBtn').textContent = 'Copied ✓'; }
-    catch (e) { const ta = el('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); $('#copyBtn').textContent = 'Copied ✓'; } catch (_) {} ta.remove(); }
-    setTimeout(() => { const b = $('#copyBtn'); if (b) b.textContent = 'Copy plan'; }, 1800);
+// ---------- top: search / route editor ----------
+function placeInput(row, value, placeholder, onPick){
+  const inp = el('input'); inp.value = value || ''; inp.placeholder = placeholder; inp.autocomplete = 'off'; inp.enterKeyHint = 'search';
+  let timer = null, list = null, items = [], active = -1;
+  const close = () => { if (list) { list.remove(); list = null; } active = -1; };
+  const show = () => {
+    close(); if (!items.length) return;
+    list = el('div', 'sugg');
+    items.forEach(it => { const d = el('div', null, `${esc(it.name)}<small>${esc(it.label || '')}</small>`); d.onpointerdown = e => { e.preventDefault(); close(); onPick(it); }; list.appendChild(d); });
+    row.appendChild(list);
   };
-}
-function gmapsUrl(){
-  const pts = stops.filter(s => s.lat != null);
-  const all = $('#roundTrip').checked ? [...pts, pts[0]] : pts;
-  const f = p => `${p.lat},${p.lon}`;
-  const way = all.slice(1, -1).map(f).join('|');
-  return `https://www.google.com/maps/dir/?api=1&origin=${f(all[0])}&destination=${f(all[all.length-1])}${way ? '&waypoints=' + encodeURIComponent(way) : ''}&travelmode=driving`;
-}
-function planText(){
-  const c = R.cands[R.sel], tl = R.tl;
-  const lines = [`🏍️ Ride plan: ${fmtDate(R.date)}`, `${LABEL[c.cls]} · max rain chance ${Math.round(c.maxProb)}% · ${c.mm.toFixed(1)} mm · ${Math.round(R.route.distance/1000)} km`];
-  R.names.forEach((n, k) => {
-    const st = tl.stopTimes[k];
-    if (k === 0) lines.push(`${fmtT(c.dep)}  Leave ${n}`);
-    else if (k === R.names.length-1) lines.push(`${fmtT(c.dep + st.arrive)}  Arrive ${n}`);
-    else lines.push(`${fmtT(c.dep + st.arrive)}  Pass ${n}`);
+  inp.addEventListener('input', () => {
+    clearTimeout(timer); const q = inp.value.trim();
+    if (q.length < 2) { close(); return; }
+    timer = setTimeout(async () => { items = await geocode(q); if (inp.value.trim() === q) show(); }, 300);
   });
-  lines.push(`Temps ${Math.round(c.minT)}–${Math.round(c.maxT)}°C, gusts up to ${Math.round(c.maxGust)} km/h`);
-  return lines.join('\n');
+  inp.addEventListener('keydown', e => {
+    if (!list) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; [...list.children].forEach((c, j) => c.classList.toggle('on', j === active)); }
+    else if (e.key === 'Enter') { e.preventDefault(); const it = items[Math.max(0, active)]; close(); onPick(it); }
+    else if (e.key === 'Escape') close();
+  });
+  inp.addEventListener('blur', () => setTimeout(close, 150));
+  return inp;
 }
-
-function renderMap(fit){
-  routeLayer.clearLayers(); sampleLayer.clearLayers();
-  const c = R.cands[R.sel], coords = R.route.coords, S = R.tl.samples;
-  L.polyline(coords, {color: '#000', weight: 9, opacity: .55}).addTo(routeLayer);
-  for (let i = 0; i < S.length; i++) {
-    const a = i ? Math.floor((S[i-1].gi + S[i].gi)/2) : 0;
-    const b = i < S.length-1 ? Math.ceil((S[i].gi + S[i+1].gi)/2) + 1 : coords.length;
-    const seg = coords.slice(a, Math.max(b, a+2));
-    L.polyline(seg, {color: riskColor(c.segs[i]), weight: 5.5, opacity: .95}).addTo(routeLayer);
+function renderEditor(focusSel){
+  const ed = $('#editor'); ed.innerHTML = '';
+  if (!S.to) {
+    const row = el('div', 'row'); row.appendChild(el('span', null, '🔍'));
+    row.appendChild(placeInput(row, '', 'Where to?', p => { S.to = p; if (!S.from) S.from = null; changed(true); }));
+    ed.appendChild(row);
+    if (focusSel) row.querySelector('input').focus();
+    return;
   }
-  S.forEach((s, i) => {
+  // from
+  const fr = el('div', 'row'); fr.appendChild(el('span', 'dot'));
+  if (!S.from) {
+    const chips = el('div', 'chips');
+    const me = el('button', 'chip', '📍 My location'); me.type = 'button'; me.onclick = useMe;
+    const ch = el('button', 'chip', 'Choose start'); ch.type = 'button'; ch.onclick = () => { S.from = {typing: true}; renderEditor('from'); };
+    chips.append(me, ch); fr.appendChild(chips);
+  } else if (S.from.me) {
+    const b = el('button', 'loc', '📍 My location'); b.type = 'button'; b.onclick = () => { S.from = {typing: true}; changed(false); renderEditor('from'); };
+    fr.appendChild(b);
+  } else {
+    const inp = placeInput(fr, S.from.name || '', 'Starting point', p => { S.from = p; changed(true); });
+    inp.dataset.k = 'from'; fr.appendChild(inp);
+    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'Clear'; x.onclick = () => { S.from = null; changed(false); }; fr.appendChild(x);
+  }
+  ed.appendChild(fr);
+  // stops
+  S.vias.forEach((v, i) => {
+    const r = el('div', 'row'); r.appendChild(el('span', 'dot via'));
+    const inp = placeInput(r, v.name || '', `Stop ${i + 1}`, p => { S.vias[i] = p; changed(true); });
+    inp.dataset.k = 'via' + i; r.appendChild(inp);
+    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'Remove stop'; x.onclick = () => { S.vias.splice(i, 1); changed(true); }; r.appendChild(x);
+    ed.appendChild(r);
+  });
+  // to
+  const tr = el('div', 'row'); tr.appendChild(el('span', 'dot end'));
+  const tin = placeInput(tr, S.to.name, 'Where to?', p => { S.to = p; changed(true); }); tin.dataset.k = 'to'; tr.appendChild(tin);
+  const tx = el('button', 'x', '×'); tx.type = 'button'; tx.title = 'Start over'; tx.onclick = reset; tr.appendChild(tx);
+  ed.appendChild(tr);
+  const add = el('button', 'add', '+ Add stop'); add.type = 'button';
+  add.onclick = () => { S.vias.push({}); renderEditor('via' + (S.vias.length - 1)); };
+  ed.appendChild(add);
+  if (focusSel) { const i = ed.querySelector(`input[data-k="${focusSel}"]`); if (i) i.focus(); }
+}
+async function useMe(){
+  S.from = {me: true}; changed(false);
+  try { await locate(); drawPlaces(true); }
+  catch (e) { S.from = {typing: true}; renderEditor('from'); toast(e.message); }
+}
+function reset(){ S.from = null; S.vias = []; S.to = null; R = null; routeLayer.clearLayers(); drawPlaces(false); renderEditor(true); renderBottom(); }
+function ready(){ return S.to && S.from && (S.from.me || S.from.lat != null) && S.vias.every(v => v.lat != null); }
+function changed(fit){ R = null; routeLayer.clearLayers(); renderEditor(); drawPlaces(fit); renderBottom(); }
+
+// ---------- bottom sheet ----------
+let toastMsg = '';
+function toast(m){ toastMsg = m; renderBottom(); }
+function renderBottom(){
+  const b = $('#bottom');
+  if (busy) { b.hidden = false; b.innerHTML = '<div class="loading"><div class="spin"></div>Checking the rain along your route…</div>'; return; }
+  if (R) { renderResult(); return; }
+  if (!ready()) { b.hidden = !toastMsg; b.innerHTML = toastMsg ? `<p class="err">${esc(toastMsg)}</p>` : ''; toastMsg = ''; return; }
+  b.hidden = false;
+  b.innerHTML = `${toastMsg ? `<p class="err">${esc(toastMsg)}</p>` : ''}<div class="btns"><button class="btn" id="later" type="button">Leave later</button><button class="btn main" id="now" type="button">Go now</button></div>`;
+  toastMsg = '';
+  $('#now').onclick = () => run({k: 'now'});
+  $('#later').onclick = openLater;
+}
+
+// ---------- leave-later popup ----------
+let mk = 'depart';
+function openLater(){
+  const d = $('#mDate'), t = $('#mTime'), now = new Date();
+  d.min = ymd(now); d.max = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 14));
+  if (!d.value || d.value < d.min) d.value = d.min;
+  if (!t.value) { const n = new Date(now.getTime() + 60*60000); t.value = String(n.getHours()).padStart(2,'0') + ':00'; }
+  setSeg(mk); $('#laterBg').hidden = false;
+}
+function setSeg(k){
+  mk = k;
+  document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('#mTimeLabel').textContent = k === 'depart' ? 'Leave at' : 'Arrive by';
+  $('#mHint').textContent = k === 'optimize' ? 'We\'ll pick the departure time with the least rain that still gets you there on time.' : '';
+}
+document.querySelectorAll('#seg button').forEach(b => b.onclick = () => setSeg(b.dataset.k));
+$('#mCancel').onclick = () => { $('#laterBg').hidden = true; };
+$('#laterBg').onclick = e => { if (e.target.id === 'laterBg') $('#laterBg').hidden = true; };
+$('#mGo').onclick = () => {
+  if (!$('#mDate').value || !$('#mTime').value) { $('#mHint').textContent = 'Pick a day and a time.'; return; }
+  $('#laterBg').hidden = true;
+  run({k: mk, date: $('#mDate').value, time: $('#mTime').value});
+};
+
+// ---------- run ----------
+async function run(o){
+  if (busy) return;
+  busy = true; renderBottom();
+  try {
+    let from = fromPlace();
+    if (S.from.me && !from) from = await locate();
+    const pts = [from, ...S.vias, S.to];
+    const names = [S.from.me ? 'My location' : from.name, ...S.vias.map(v => v.name), S.to.name];
+    const route = await getRoute(pts);
+    const tl = buildTimeline(route, 0, 1);
+    const date = o.k === 'now' ? ymd(new Date()) : o.date;
+    const wx = await getWeather(tl.samples, date, true);
+    const tz = wx[0].tz, dayStart = wx[0].t0, nowUnix = Date.now() / 1000;
+    let c, extra = '';
+    if (o.k === 'now') c = evaluate(Math.ceil(nowUnix / 60) * 60, tl, wx);
+    else {
+      const t = hm2min(o.time) * 60;
+      if (o.k === 'depart') c = evaluate(dayStart + t, tl, wx);
+      else if (o.k === 'arrive') {
+        const dep = dayStart + t - tl.totalSec;
+        if (dep < dayStart) throw new Error(`The ride takes ${fmtDur(tl.totalSec)}, so arriving by ${o.time} means leaving the day before. Pick a later time.`);
+        if (dep < nowUnix - 60) throw new Error(`The ride takes ${fmtDur(tl.totalSec)}, so you'd have had to leave at ${fmtClock(dep, tz)}. Pick a later time.`);
+        c = evaluate(dep, tl, wx);
+      } else {
+        const deadline = dayStart + t, last = deadline - tl.totalSec;
+        let first = Math.max(dayStart + 5*3600, deadline - 12*3600, Math.ceil((nowUnix + 300) / 900) * 900);
+        first = Math.ceil((first - dayStart) / 900) * 900 + dayStart;
+        if (last < first) throw new Error(`The ride takes ${fmtDur(tl.totalSec)}. There's no time left to leave and arrive by ${o.time}. Pick a later time.`);
+        const cands = []; for (let d = first; d <= last; d += STEP_MIN * 60) cands.push(evaluate(d, tl, wx));
+        const minCost = Math.min(...cands.map(x => x.cost));
+        cands.forEach(x => { x.score = x.cost + (deadline - x.arr) / 3600 * Math.max(0.15, minCost * 0.04); });
+        c = cands.reduce((a, x) => x.score < a.score ? x : a, cands[0]);
+        const dry = cands.filter(x => x.cls === 'dry').length;
+        extra = c.cls === 'dry' ? `Driest time to leave to arrive by ${o.time}.${deadline - c.arr > 3600 ? ' Leaving later means riding in or right after rain.' : ''}` : (dry ? '' : `There's no completely dry time before ${o.time}. This is the least wet option.`);
+      }
+      if (c.dep < nowUnix - 60) extra = 'That time has already passed. Showing its forecast anyway.';
+    }
+    R = {o, route, tl, wx, tz, names, c, extra, date};
+    drawRoute();
+  } catch (e) {
+    R = null; routeLayer.clearLayers();
+    toastMsg = /failed to fetch|abort|network|HTTP \d/i.test(e.message) ? 'Couldn\'t reach the weather or routing service. Check your connection and try again.' : e.message;
+  } finally { busy = false; renderBottom(); if (R) fitTo(R.route.coords); }
+}
+function fmtClock(unix, tz){ return new Intl.DateTimeFormat('en-GB', {hour: '2-digit', minute: '2-digit', timeZone: tz}).format(new Date(unix * 1000)); }
+function riskColor(w){
+  if (w.rate >= 2 || w.prob >= 70) return 'var(--wet)';
+  if (w.rate >= 0.3 || w.prob >= 45) return 'var(--mid)';
+  if (w.prob >= 20 || w.rate >= 0.1) return 'var(--low)';
+  return 'var(--dry)';
+}
+const CSSV = {'var(--wet)': '#ff5468', 'var(--mid)': '#ffa53a', 'var(--low)': '#c9d84a', 'var(--dry)': '#35d07f'};
+function drawRoute(){
+  routeLayer.clearLayers();
+  const {c, route, tl, tz} = R, coords = route.coords, S_ = tl.samples;
+  L.polyline(coords, {color: '#000', weight: 10, opacity: .6, interactive: false}).addTo(routeLayer);
+  for (let i = 0; i < S_.length; i++) {
+    const a = i ? Math.floor((S_[i-1].gi + S_[i].gi) / 2) : 0;
+    const b = i < S_.length - 1 ? Math.ceil((S_[i].gi + S_[i+1].gi) / 2) + 1 : coords.length;
     const w = c.segs[i];
-    L.circleMarker([s.lat, s.lon], {radius: 4, color: '#0c0f14', weight: 1, fillColor: riskColor(w), fillOpacity: 1})
-      .bindPopup(`<b>${fmtT(w.t)}</b> · km ${Math.round(s.d/1000)}<br>
-        ${WMO[w.code] || ''}<br>
-        Rain chance <b>${Math.round(w.prob)}%</b>${w.nModels ? ` (${Math.round(w.agree)}% of ${w.nModels} models wet)` : ''}<br>
-        Intensity ${w.rate.toFixed(1)} mm/h${w.before > 0.3 ? `<br>Rain in last 3 h: ${w.before.toFixed(1)} mm (wet road)` : ''}<br>
-        ${w.temp != null ? Math.round(w.temp) + '°C · ' : ''}wind ${Math.round(w.wind || 0)} km/h, gusts ${Math.round(w.gust || 0)}`)
-      .addTo(sampleLayer);
-  });
-  drawStopsOnMap(false);
-  if (fit) map.fitBounds(L.latLngBounds(coords).pad(0.12));
+    L.polyline(coords.slice(a, Math.max(b, a + 2)), {color: CSSV[riskColor(w)], weight: 6, opacity: 1})
+      .bindPopup(`<b>${fmtClock(w.t, tz)}</b> · ${Math.round(w.prob)}% rain chance${w.rate >= 0.1 ? ` · ${w.rate.toFixed(1)} mm/h` : ''}${w.temp != null ? ` · ${Math.round(w.temp)}°C` : ''}`)
+      .addTo(routeLayer);
+  }
+  drawPlaces(false);
+}
+const LABEL = {dry: 'Dry ride', low: 'Low risk', mid: 'Showers possible', wet: 'Rain'};
+function rainLine(){
+  const {c, tl, names, tz} = R;
+  if (c.cls === 'dry') return c.wetMin >= 5 ? 'No rain expected, but roads may still be wet from earlier rain.' : 'No rain expected on your route.';
+  const i = c.segs.findIndex(s => s.prob >= 40 || s.rate >= 0.3);
+  if (i < 0) return `Small chance of a shower (up to ${Math.round(c.maxProb)}%). Keep the rain gear handy.`;
+  const s = tl.samples[i], w = c.segs[i];
+  const near = tl.stopTimes.map((st, k) => ({k, d: Math.abs(st.arrive - s.t)})).sort((a, b) => a.d - b.d)[0];
+  const where = near.d < 12*60 ? `near ${names[near.k]}` : `between ${names[s.leg]} and ${names[s.leg + 1]}`;
+  return `${w.rate >= 0.3 ? 'Rain' : 'Showers'} likely ${where} around ${fmtClock(w.t, tz)}${c.mm >= 0.1 ? `, about ${c.mm.toFixed(1)} mm on the ride` : ''}. Pack the rain suit.`;
+}
+function renderResult(){
+  const b = $('#bottom'), {c, tz, tl, names, route} = R;
+  const day = R.o.k === 'now' || R.date === ymd(new Date()) ? '' : new Date(R.date + 'T12:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}) + ' · ';
+  const stopsTxt = names.length > 2 ? names.slice(1, -1).map((n, k) => `${esc(n)} ${fmtClock(c.dep + tl.stopTimes[k + 1].arrive, tz)}`).join(' · ') : '';
+  b.hidden = false;
+  b.innerHTML = `
+    <div class="rhead"><span class="pill ${c.cls}">${LABEL[c.cls]}</span><button class="close" id="rClose" type="button" aria-label="Close">×</button></div>
+    <div class="big">Leave ${fmtClock(c.dep, tz)} → Arrive ${fmtClock(c.arr, tz)}</div>
+    <div class="sub">${day}${Math.round(route.distance / 1000)} km · ${fmtDur(tl.totalSec)}${isFinite(c.minT) ? ` · ${Math.round(c.minT)}–${Math.round(c.maxT)}°C` : ''}</div>
+    ${stopsTxt ? `<p class="stops">Stops: ${stopsTxt}</p>` : ''}
+    <p class="sum">${R.extra ? esc(R.extra) + ' ' : ''}${esc(rainLine())}</p>
+    <div class="keys"><span><i style="background:var(--dry)"></i>Dry</span><span><i style="background:var(--low)"></i>Maybe</span><span><i style="background:var(--mid)"></i>Showers</span><span><i style="background:var(--wet)"></i>Rain</span></div>
+    <div class="btns"><button class="btn" id="later" type="button">Leave later</button><button class="btn main" id="now" type="button">Go now</button></div>`;
+  $('#rClose').onclick = () => { R = null; routeLayer.clearLayers(); drawPlaces(false); renderBottom(); };
+  $('#now').onclick = () => run({k: 'now'});
+  $('#later').onclick = openLater;
 }
 
-function renderStrip(){
-  $('#stripCard').hidden = R.mode !== 'optimize';
-  if (R.mode !== 'optimize') return;
-  const box = $('#strip'); box.innerHTML = '';
-  const bars = el('div', 'bars'), axis = el('div', 'axis');
-  const w = Math.max(600, R.cands.length * 12) + 'px'; bars.style.minWidth = w; axis.style.minWidth = w;
-  const maxCost = Math.max(...R.cands.map(c => c.cost), 1);
-  R.cands.forEach((c, i) => {
-    const b = el('div', 'bar' + (i === R.sel ? ' sel' : '') + (i === R.bestIdx ? ' best' : ''));
-    b.style.height = (8 + 92 * c.cost / maxCost) + '%';
-    b.style.background = COLOR[c.cls];
-    b.title = `Leave ${fmtT(c.dep)} → arrive ${fmtT(c.arr)}\n${LABEL[c.cls]} · max ${Math.round(c.maxProb)}% · ${c.mm.toFixed(1)} mm`;
-    b.onclick = () => { R.sel = i; renderAll(false); };
-    bars.appendChild(b);
-    const every = R.cands.length > 48 ? 2 : 1, t = fmtT(c.dep);
-    const lab = el('span', null, t.endsWith(':00') && (+t.slice(0,2)) % every === 0 ? t.slice(0,2) : '');
-    axis.appendChild(lab);
-  });
-  box.appendChild(bars); box.appendChild(axis);
+// ---------- boot ----------
+renderEditor(); renderBottom();
+if (navigator.permissions && window.isSecureContext) {
+  navigator.permissions.query({name: 'geolocation'}).then(p => { if (p.state === 'granted') locate().then(() => { if (!S.to) map.setView([myPos.lat, myPos.lon], 12); }).catch(() => {}); }).catch(() => {});
 }
-
-function renderHeat(){
-  $('#heatCard').hidden = false;
-  const c = R.cands[R.sel], S = R.tl.samples;
-  const opt = R.mode === 'optimize';
-  let firstH = Math.floor((c.dep - R.dayStart)/3600) - 3, lastH = Math.ceil((c.arr - R.dayStart)/3600) + 3;
-  if (opt) { firstH = Math.min(firstH, hm2min($('#earliest').value)/60 | 0); lastH = Math.max(lastH, Math.ceil(hm2min($('#latest').value)/60)); }
-  firstH = Math.max(0, firstH); lastH = Math.min(R.wx[0].H.time.length - 2, lastH);
-  const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
-  const grid = el('div', 'hgrid');
-  const narrow = window.matchMedia && matchMedia('(max-width:900px)').matches;
-  grid.style.gridTemplateColumns = `${narrow ? 76 : 130}px repeat(${hours.length}, minmax(${narrow ? 22 : 18}px, 1fr))`;
-  grid.appendChild(el('div', 'hcorner'));
-  hours.forEach(h => grid.appendChild(el('div', 'hhead', String(h % 24).padStart(2, '0'))));
-  const stopRow = {}; R.tl.stopTimes.forEach((st, k) => { let bi = 0, bd = Infinity; S.forEach((s, i) => { const d = Math.abs(s.t - st.arrive); if (d < bd) { bd = d; bi = i; } }); stopRow[bi] = R.names[k]; });
-  S.forEach((s, i) => {
-    const lab = stopRow[i] ? `${esc(stopRow[i])}` : `km ${Math.round(s.d/1000)}`;
-    grid.appendChild(el('div', 'hlab', stopRow[i] ? `<b style="color:var(--text)">${lab}</b>` : lab));
-    const pathHour = c.segs[i].hourIdx; // bucket index ending after ETA
-    hours.forEach(h => {
-      const w = wxAt(R.wx[i], R.dayStart + h*3600 + 1800);
-      const cell = el('div', 'hcell' + (w.hourIdx === pathHour ? ' path' : ''));
-      cell.style.background = rainCellColor(w.prob, w.rate);
-      cell.title = `${stopRow[i] || 'km ' + Math.round(s.d/1000)} · ${String(h%24).padStart(2,'0')}:00–${String((h+1)%24).padStart(2,'0')}:00\n${Math.round(w.prob)}% chance · ${w.rate.toFixed(1)} mm/h${w.temp != null ? ' · ' + Math.round(w.temp) + '°C' : ''}`;
-      cell.onclick = () => { document.querySelectorAll('.hcell.tapped').forEach(x => x.classList.remove('tapped')); cell.classList.add('tapped'); $('#heatInfo').textContent = cell.title.replace('\n', ' · '); };
-      grid.appendChild(cell);
-    });
-  });
-  const box = $('#heat'); box.innerHTML = ''; box.appendChild(grid);
-}
-
-
-initForm(); renderStops(); drawStopsOnMap(true);
-if (stops.filter(s => s.lat != null).length >= 2) plan();
 </script>
 </body>
 </html>
