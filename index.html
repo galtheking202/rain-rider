@@ -43,6 +43,10 @@ button{cursor:pointer;touch-action:manipulation}
 .chip{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-weight:600;font-size:14px}
 .chip.on,.chip:active{background:var(--accent);color:var(--ink);border-color:transparent}
 .loc{flex:1;font-weight:600;color:var(--accent);background:none;border:0;text-align:left;padding:12px 0}
+.grip{flex:0 0 auto;display:grid;place-items:center;width:34px;height:40px;margin-right:-6px;color:var(--muted);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.grip:active{cursor:grabbing;color:var(--text)}
+.rows .row{transition:transform .15s ease;background:var(--card)}
+.rows .row.dragging{transition:none;z-index:10;border-radius:12px;box-shadow:0 8px 24px #000c;background:var(--card2)}
 .add{background:none;border:0;color:var(--muted);font-weight:600;font-size:14px;padding:10px 8px 6px 30px}
 .sugg{position:absolute;left:0;right:0;top:100%;z-index:5;background:#1f2736;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 12px 30px #000b;margin-top:4px}
 .sugg div{padding:12px 14px;border-bottom:1px solid #283146}
@@ -339,15 +343,18 @@ function showMe(){
   if (meMarker) meMarker.setLatLng([myPos.lat, myPos.lon]);
   else meMarker = L.marker([myPos.lat, myPos.lon], {icon: L.divIcon({className: '', html: '<div class="me"></div>', iconSize: [16,16], iconAnchor: [8,8]}), interactive: false}).addTo(map);
 }
-function fromPlace(){ return S.from && S.from.me ? myPos : (S.from && S.from.lat != null ? S.from : null); }
+function valid(x){ return !!x && (!!x.me || x.lat != null); }
+function resolve(x){ return x && x.me ? myPos : (x && x.lat != null ? x : null); }
 function drawPlaces(fit){
   placeLayer.clearLayers();
   const pts = [];
   const add = (p, cls, txt) => { if (!p) return; pts.push([p.lat, p.lon]); L.marker([p.lat, p.lon], {icon: L.divIcon({className: '', html: `<div class="mk ${cls}">${txt}</div>`, iconSize: [28,28], iconAnchor: [14,14]})}).bindPopup(esc(p.name)).addTo(placeLayer); };
-  const f = fromPlace(); if (f && !(S.from && S.from.me)) add(f, 's', 'A');
-  if (f && S.from && S.from.me) pts.push([f.lat, f.lon]);
-  S.vias.forEach((v, i) => v.lat != null && add(v, 'v', i + 1));
-  add(S.to, 'e', 'B');
+  const items = [S.from, ...S.vias, S.to], last = items.length - 1;
+  items.forEach((x, i) => {
+    const p = resolve(x); if (!p) return;
+    if (x.me) { pts.push([p.lat, p.lon]); return; }
+    add(p, i === 0 ? 's' : i === last ? 'e' : 'v', i === 0 ? 'A' : i === last ? 'B' : i);
+  });
   if (fit && pts.length) fitTo(pts);
 }
 function fitTo(pts){
@@ -392,39 +399,73 @@ function renderEditor(focusSel){
     if (focusSel) row.querySelector('input').focus();
     return;
   }
-  // from
-  const fr = el('div', 'row'); fr.appendChild(el('span', 'dot'));
-  if (!S.from) {
-    const chips = el('div', 'chips');
-    const me = el('button', 'chip', '📍 My location'); me.type = 'button'; me.onclick = useMe;
-    const ch = el('button', 'chip', 'Choose start'); ch.type = 'button'; ch.onclick = () => { S.from = {typing: true}; renderEditor('from'); };
-    chips.append(me, ch); fr.appendChild(chips);
-  } else if (S.from.me) {
-    const b = el('button', 'loc', '📍 My location'); b.type = 'button'; b.onclick = () => { S.from = {typing: true}; changed(false); renderEditor('from'); };
-    fr.appendChild(b);
-  } else {
-    const inp = placeInput(fr, S.from.name || '', 'Starting point', p => { S.from = p; changed(true); });
-    inp.dataset.k = 'from'; fr.appendChild(inp);
-    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'Clear'; x.onclick = () => { S.from = null; changed(false); }; fr.appendChild(x);
-  }
-  ed.appendChild(fr);
-  // stops
-  S.vias.forEach((v, i) => {
-    const r = el('div', 'row'); r.appendChild(el('span', 'dot via'));
-    const inp = placeInput(r, v.name || '', `Stop ${i + 1}`, p => { S.vias[i] = p; changed(true); });
-    inp.dataset.k = 'via' + i; r.appendChild(inp);
-    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'Remove stop'; x.onclick = () => { S.vias.splice(i, 1); changed(true); }; r.appendChild(x);
-    ed.appendChild(r);
-  });
-  // to
-  const tr = el('div', 'row'); tr.appendChild(el('span', 'dot end'));
-  const tin = placeInput(tr, S.to.name, 'Where to?', p => { S.to = p; changed(true); }); tin.dataset.k = 'to'; tr.appendChild(tin);
-  const tx = el('button', 'x', '×'); tx.type = 'button'; tx.title = 'Start over'; tx.onclick = reset; tr.appendChild(tx);
-  ed.appendChild(tr);
+  const items = [S.from, ...S.vias, S.to], last = items.length - 1;
+  const list = el('div', 'rows');
+  items.forEach((x, i) => list.appendChild(rowFor(x, i, last)));
+  ed.appendChild(list);
   const add = el('button', 'add', '+ Add stop'); add.type = 'button';
   add.onclick = () => { S.vias.push({}); renderEditor('via' + (S.vias.length - 1)); };
   ed.appendChild(add);
   if (focusSel) { const i = ed.querySelector(`input[data-k="${focusSel}"]`); if (i) i.focus(); }
+}
+function rowFor(x, idx, last){
+  const role = idx === 0 ? 'from' : idx === last ? 'to' : 'via';
+  const key = role === 'via' ? 'via' + (idx - 1) : role;
+  const r = el('div', 'row');
+  r.appendChild(el('span', role === 'from' ? 'dot' : role === 'to' ? 'dot end' : 'dot via'));
+  const setItem = v => { if (role === 'from') S.from = v; else if (role === 'to') S.to = v; else S.vias[idx - 1] = v; };
+  if (role === 'from' && !x) {
+    const chips = el('div', 'chips');
+    const me = el('button', 'chip', '📍 My location'); me.type = 'button'; me.onclick = useMe;
+    const ch = el('button', 'chip', 'Choose start'); ch.type = 'button'; ch.onclick = () => { S.from = {typing: true}; renderEditor('from'); };
+    chips.append(me, ch); r.appendChild(chips);
+  } else if (x && x.me) {
+    const b = el('button', 'loc', '📍 My location'); b.type = 'button';
+    b.onclick = () => { setItem(role === 'from' ? {typing: true} : {}); changed(false); renderEditor(key); };
+    r.appendChild(b);
+  } else {
+    const ph = role === 'from' ? 'Starting point' : role === 'to' ? 'Where to?' : `Stop ${idx}`;
+    const inp = placeInput(r, (x && x.name) || '', ph, p => { setItem(p); changed(true); });
+    inp.dataset.k = key; r.appendChild(inp);
+  }
+  const xb = el('button', 'x', '×'); xb.type = 'button';
+  if (role === 'from') { xb.title = 'Clear'; xb.hidden = !x; xb.onclick = () => { S.from = null; changed(false); }; }
+  else if (role === 'via') { xb.title = 'Remove stop'; xb.onclick = () => { S.vias.splice(idx - 1, 1); changed(true); }; }
+  else { xb.title = 'Start over'; xb.onclick = reset; }
+  r.appendChild(xb);
+  const g = el('span', 'grip', '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>');
+  g.title = 'Drag to reorder'; g.setAttribute('aria-label', 'Drag to reorder');
+  g.addEventListener('pointerdown', e => startDrag(e, r));
+  r.appendChild(g);
+  return r;
+}
+function startDrag(e, row){
+  e.preventDefault();
+  const handle = e.currentTarget, rows = [...row.parentElement.children], from = rows.indexOf(row);
+  const rects = rows.map(x => x.getBoundingClientRect()), h = rects[from].height, y0 = e.clientY;
+  let to = from;
+  try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+  row.classList.add('dragging');
+  const move = ev => {
+    const dy = clamp(ev.clientY - y0, rects[0].top - rects[from].top - h * 0.6, rects[rows.length - 1].bottom - rects[from].bottom + h * 0.6);
+    row.style.transform = `translateY(${dy}px)`;
+    const cy = rects[from].top + h / 2 + dy;
+    to = from;
+    rows.forEach((x, i) => { const mid = rects[i].top + rects[i].height / 2; if (i < from && cy < mid) to = Math.min(to, i); if (i > from && cy > mid) to = Math.max(to, i); });
+    rows.forEach((x, i) => { if (i === from) return; let sh = 0; if (from < to && i > from && i <= to) sh = -h; if (from > to && i < from && i >= to) sh = h; x.style.transform = sh ? `translateY(${sh}px)` : ''; });
+  };
+  const up = () => {
+    handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
+    rows.forEach(x => { x.style.transform = ''; }); row.classList.remove('dragging');
+    if (to === from) return;
+    const items = [S.from, ...S.vias, S.to]; const [m] = items.splice(from, 1); items.splice(to, 0, m);
+    const last = items.length - 1;
+    S.from = valid(items[0]) ? items[0] : null;
+    S.to = valid(items[last]) ? items[last] : {};
+    S.vias = items.slice(1, last).map(x => valid(x) ? x : {});
+    changed(true);
+  };
+  handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
 }
 async function useMe(){
   S.from = {me: true}; changed(false);
@@ -432,7 +473,7 @@ async function useMe(){
   catch (e) { S.from = {typing: true}; renderEditor('from'); toast(e.message); }
 }
 function reset(){ S.from = null; S.vias = []; S.to = null; R = null; routeLayer.clearLayers(); drawPlaces(false); renderEditor(true); renderBottom(); }
-function ready(){ return S.to && S.from && (S.from.me || S.from.lat != null) && S.vias.every(v => v.lat != null); }
+function ready(){ return valid(S.to) && valid(S.from) && S.vias.every(valid); }
 function changed(fit){ R = null; routeLayer.clearLayers(); renderEditor(); drawPlaces(fit); renderBottom(); }
 
 // ---------- bottom sheet ----------
@@ -479,10 +520,10 @@ async function run(o){
   if (busy) return;
   busy = true; renderBottom();
   try {
-    let from = fromPlace();
-    if (S.from.me && !from) from = await locate();
-    const pts = [from, ...S.vias, S.to];
-    const names = [S.from.me ? 'My location' : from.name, ...S.vias.map(v => v.name), S.to.name];
+    const items = [S.from, ...S.vias, S.to];
+    if (items.some(x => x.me) && !myPos) await locate();
+    const pts = items.map(resolve);
+    const names = items.map(x => x.me ? 'My location' : x.name);
     const route = await getRoute(pts);
     const tl = buildTimeline(route, 0, 1);
     const date = o.k === 'now' ? ymd(new Date()) : o.date;
