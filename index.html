@@ -80,6 +80,7 @@ button{cursor:pointer;touch-action:manipulation}
 .spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:#ff9aa6;margin:0 0 12px}
+.feel{margin:8px 0 0;font-size:14px;color:#9cc6ff}
 #bottom.res{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow-y:hidden;overscroll-behavior:contain}
 #bottom.res.open{overflow-y:auto}
 .grab{display:block;width:44px;height:5px;border:0;padding:0;border-radius:3px;background:var(--line);margin:-4px auto 12px}
@@ -249,7 +250,7 @@ function buildTimeline(route, dwellSec, pace){
   const samples = [];
   for (let i = 0; i < n; i++) {
     const D = total * i/(n-1); const {p, gi} = pointAt(D);
-    samples.push({i, d: D, lat: p[0], lon: p[1], t: timeAt(D), gi, leg: legOf(D)});
+    const lg = legs[legOf(D)]; samples.push({i, d: D, lat: p[0], lon: p[1], t: timeAt(D), gi, leg: legOf(D), v: lg.duration ? lg.distance / lg.duration * 3.6 / pace : 50});
   }
   samples.forEach((s, i) => {
     const a = i ? samples[i-1].d : s.d, b = i < n-1 ? samples[i+1].d : s.d;
@@ -314,6 +315,12 @@ function wxAt(w, t){
 }
 
 
+function windChill(T, V){
+  if (T == null) return null;
+  if (V < 5) return T;
+  const p = Math.pow(V, 0.16);
+  return Math.min(T, 13.12 + 0.6215 * T - 11.37 * p + 0.3965 * T * p);
+}
 function classify(e){
   if (e.maxProb < 20 && e.rainMin < 1 && e.mm < 0.2) return 'dry';
   if (e.maxProb < 40 && e.mm < 0.6) return 'low';
@@ -322,7 +329,7 @@ function classify(e){
 }
 
 function evaluate(dep, tl, wx){
-  let cost = 0, maxProb = 0, mm = 0, rainMin = 0, wetMin = 0, minT = Infinity, maxT = -Infinity, maxGust = 0;
+  let cost = 0, maxProb = 0, mm = 0, rainMin = 0, wetMin = 0, minT = Infinity, maxT = -Infinity, maxGust = 0, minF = Infinity, maxF = -Infinity;
   const segs = tl.samples.map((s, i) => {
     const t = dep + s.t, w = wxAt(wx[i], t);
     const p = w.prob / 100, inten = Math.min(w.rate, 6);
@@ -331,11 +338,12 @@ function evaluate(dep, tl, wx){
     mm += w.rate * s.w / 60;
     if (w.prob >= 50 || w.rate >= 0.3) rainMin += s.w;
     if (w.before > 0.5) wetMin += s.w;
-    if (w.temp != null) { minT = Math.min(minT, w.temp); maxT = Math.max(maxT, w.temp); }
+    const feel = windChill(w.temp, s.v);
+    if (w.temp != null) { minT = Math.min(minT, w.temp); maxT = Math.max(maxT, w.temp); minF = Math.min(minF, feel); maxF = Math.max(maxF, feel); }
     if (w.gust != null) maxGust = Math.max(maxGust, w.gust);
-    return {t, ...w};
+    return {t, ...w, feel};
   });
-  const e = {dep, arr: dep + tl.totalSec, cost, maxProb, mm, rainMin, wetMin, minT, maxT, maxGust, segs};
+  const e = {dep, arr: dep + tl.totalSec, cost, maxProb, mm, rainMin, wetMin, minT, maxT, maxGust, minF, maxF, segs};
   e.cls = classify(e);
   return e;
 }
@@ -655,7 +663,7 @@ function drawRoute(){
     const b = i < S_.length - 1 ? Math.ceil((S_[i].gi + S_[i+1].gi) / 2) + 1 : coords.length;
     const w = c.segs[i];
     L.polyline(coords.slice(a, Math.max(b, a + 2)), {color: CSSV[riskColor(w)], weight: 6, opacity: 1})
-      .bindPopup(`<b>${fmtClock(w.t, tz)}</b> · ${Math.round(w.prob)}% rain chance${w.rate >= 0.1 ? ` · ${w.rate.toFixed(1)} mm/h` : ''}${w.temp != null ? ` · ${Math.round(w.temp)}°C` : ''}`)
+      .bindPopup(`<b>${fmtClock(w.t, tz)}</b> · ${Math.round(w.prob)}% rain chance${w.rate >= 0.1 ? ` · ${w.rate.toFixed(1)} mm/h` : ''}${w.temp != null ? ` · ${Math.round(w.temp)}°C, feels ${Math.round(w.feel)}°C on the bike` : ''}`)
       .addTo(routeLayer);
   }
   drawPlaces(false);
@@ -682,7 +690,8 @@ function renderResult(){
     <button class="grab" id="grab" type="button" aria-label="Show rain graphs"></button>
     <div class="rhead"><span class="pill ${c.cls}">${LABEL[c.cls]}</span><button class="close" id="rClose" type="button" aria-label="Close">×</button></div>
     <div class="big">Leave ${fmtClock(c.dep, tz)} → Arrive ${fmtClock(c.arr, tz)}</div>
-    <div class="sub">${day}${Math.round(route.distance / 1000)} km · ${fmtDur(tl.totalSec)}${isFinite(c.minT) ? ` · ${Math.round(c.minT)}–${Math.round(c.maxT)}°C` : ''}</div>
+    <div class="sub">${day}${Math.round(route.distance / 1000)} km · ${fmtDur(tl.totalSec)}${isFinite(c.minT) ? ` · ${Math.round(c.minT) === Math.round(c.maxT) ? Math.round(c.minT) : Math.round(c.minT) + '–' + Math.round(c.maxT)}°C` : ''}</div>
+    ${isFinite(c.minF) ? `<p class="feel">🏍️ Feels like <b>${Math.round(c.minF) === Math.round(c.maxF) ? Math.round(c.minF) : Math.round(c.minF) + '–' + Math.round(c.maxF)}°C</b> on the bike${c.minF <= 12 ? '. Wear warm layers' : ''}</p>` : ''}
     ${stopsTxt ? `<p class="stops">Stops: ${stopsTxt}</p>` : ''}
     <p class="sum">${R.extra ? esc(R.extra) + ' ' : ''}${esc(rainLine())}</p>
     <div class="keys"><span><i style="background:var(--dry)"></i>Dry</span><span><i style="background:var(--low)"></i>Maybe</span><span><i style="background:var(--mid)"></i>Showers</span><span><i style="background:var(--wet)"></i>Rain</span></div>
