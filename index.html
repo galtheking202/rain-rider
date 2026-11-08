@@ -79,6 +79,30 @@ button{cursor:pointer;touch-action:manipulation}
 .spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:#ff9aa6;margin:0 0 12px}
+#bottom.res{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow-y:hidden;overscroll-behavior:contain}
+#bottom.res.open{overflow-y:auto}
+.grab{display:block;width:44px;height:5px;border:0;padding:0;border-radius:3px;background:var(--line);margin:-4px auto 12px}
+.det{display:none}
+#bottom.open .det{display:block}
+#bottom.open .hintup{display:none}
+.hintup{display:block;width:100%;background:none;border:0;color:var(--muted);font-size:13px;padding:12px 0 0;text-align:center}
+.det h4{margin:20px 0 4px;font-size:15px}
+.small{color:var(--muted);font-size:12px;margin:2px 0 8px}
+.ex{display:flex;gap:10px;margin-bottom:10px}
+.ex a{flex:1;text-align:center;text-decoration:none}
+.scrollx{overflow-x:auto;padding:16px 0 4px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:90px}
+.bar{flex:0 0 10px;border-radius:3px 3px 0 0;opacity:.8;cursor:pointer}
+.bar.sel{outline:2px solid #fff;outline-offset:1px;opacity:1}
+.axis{display:flex;gap:2px;color:var(--muted);font-size:10px;margin-top:3px}
+.axis span{flex:0 0 10px;white-space:nowrap}
+.hgrid{display:grid;gap:1px;font-size:10px}
+.hcell{height:18px;border-radius:2px;cursor:pointer}
+.hcell.path{outline:2px solid var(--accent);outline-offset:-1px}
+.hcell.tap{box-shadow:0 0 0 2px #fff inset}
+.hlab{position:sticky;left:0;background:var(--card);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px;line-height:18px;z-index:2}
+.hcorner{position:sticky;left:0;background:var(--card);z-index:3}
+.hhead{color:var(--muted);text-align:center}
 
 .modal-bg{position:fixed;inset:0;z-index:2000;background:#000a;display:flex;align-items:flex-end;justify-content:center}
 @media (min-width:700px){ .modal-bg{align-items:center} }
@@ -520,6 +544,7 @@ let toastMsg = '';
 function toast(m){ toastMsg = m; renderBottom(); }
 function renderBottom(){
   const b = $('#bottom');
+  if (!R || busy) b.classList.remove('res', 'open');
   if (busy) { b.hidden = false; b.innerHTML = '<div class="loading"><div class="spin"></div>Checking the rain along your route…</div>'; return; }
   if (R) { renderResult(); return; }
   if (!ready()) { b.hidden = !toastMsg; b.innerHTML = toastMsg ? `<p class="err">${esc(toastMsg)}</p>` : ''; toastMsg = ''; return; }
@@ -557,7 +582,7 @@ $('#mGo').onclick = () => {
 // ---------- run ----------
 async function run(o){
   if (busy) return;
-  busy = true; renderBottom();
+  busy = true; sheetOpen = false; renderBottom();
   try {
     const items = [S.from, ...S.vias, S.to];
     if (items.some(x => x.me) && !myPos) await locate();
@@ -568,7 +593,7 @@ async function run(o){
     const date = o.k === 'now' ? ymd(new Date()) : o.date;
     const wx = await getWeather(tl.samples, date, true);
     const tz = wx[0].tz, dayStart = wx[0].t0, nowUnix = Date.now() / 1000;
-    let c, extra = '';
+    let c, extra = '', cands = null;
     if (o.k === 'now') c = evaluate(Math.ceil(nowUnix / 60) * 60, tl, wx);
     else {
       const t = hm2min(o.time) * 60;
@@ -583,7 +608,7 @@ async function run(o){
         let first = Math.max(dayStart + 5*3600, deadline - 12*3600, Math.ceil((nowUnix + 300) / 900) * 900);
         first = Math.ceil((first - dayStart) / 900) * 900 + dayStart;
         if (last < first) throw new Error(`The ride takes ${fmtDur(tl.totalSec)}. There's no time left to leave and arrive by ${o.time}. Pick a later time.`);
-        const cands = []; for (let d = first; d <= last; d += STEP_MIN * 60) cands.push(evaluate(d, tl, wx));
+        cands = []; for (let d = first; d <= last; d += STEP_MIN * 60) cands.push(evaluate(d, tl, wx));
         const minCost = Math.min(...cands.map(x => x.cost));
         cands.forEach(x => { x.score = x.cost + (deadline - x.arr) / 3600 * Math.max(0.15, minCost * 0.04); });
         c = cands.reduce((a, x) => x.score < a.score ? x : a, cands[0]);
@@ -592,7 +617,12 @@ async function run(o){
       }
       if (c.dep < nowUnix - 60) extra = 'That time has already passed. Showing its forecast anyway.';
     }
-    R = {o, route, tl, wx, tz, names, c, extra, date};
+    if (!cands) {
+      cands = [];
+      const start = Math.max(dayStart + 5*3600, Math.ceil(nowUnix / 900) * 900);
+      for (let d = Math.ceil((start - dayStart) / 900) * 900 + dayStart; d <= dayStart + 23*3600 + 2700; d += STEP_MIN * 60) cands.push(evaluate(d, tl, wx));
+    }
+    R = {o, route, tl, wx, tz, names, c, extra, date, dayStart, cands, o0: o, c0: c, extra0: extra};
     drawRoute();
   } catch (e) {
     R = null; routeLayer.clearLayers();
@@ -637,17 +667,123 @@ function renderResult(){
   const day = R.o.k === 'now' || R.date === ymd(new Date()) ? '' : new Date(R.date + 'T12:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}) + ' · ';
   const stopsTxt = names.length > 2 ? names.slice(1, -1).map((n, k) => `${esc(n)} ${fmtClock(c.dep + tl.stopTimes[k + 1].arrive, tz)}`).join(' · ') : '';
   b.hidden = false;
+  const now = R.o.k === 'now', vias = names.length > 2;
+  const ex = now ? `<div class="ex"><a class="btn main" href="${gmapsUrl()}" target="_blank" rel="noopener">Google Maps</a><a class="btn main" href="${wazeUrl()}" target="_blank" rel="noopener">Waze</a></div>${vias ? '<p class="small">Waze takes one stop at a time, so it opens with your first stop.</p>' : ''}` : '';
+  b.classList.add('res'); b.classList.toggle('open', sheetOpen);
   b.innerHTML = `
+    <button class="grab" id="grab" type="button" aria-label="Show rain graphs"></button>
     <div class="rhead"><span class="pill ${c.cls}">${LABEL[c.cls]}</span><button class="close" id="rClose" type="button" aria-label="Close">×</button></div>
     <div class="big">Leave ${fmtClock(c.dep, tz)} → Arrive ${fmtClock(c.arr, tz)}</div>
     <div class="sub">${day}${Math.round(route.distance / 1000)} km · ${fmtDur(tl.totalSec)}${isFinite(c.minT) ? ` · ${Math.round(c.minT)}–${Math.round(c.maxT)}°C` : ''}</div>
     ${stopsTxt ? `<p class="stops">Stops: ${stopsTxt}</p>` : ''}
     <p class="sum">${R.extra ? esc(R.extra) + ' ' : ''}${esc(rainLine())}</p>
     <div class="keys"><span><i style="background:var(--dry)"></i>Dry</span><span><i style="background:var(--low)"></i>Maybe</span><span><i style="background:var(--mid)"></i>Showers</span><span><i style="background:var(--wet)"></i>Rain</span></div>
-    <div class="btns"><button class="btn" id="later" type="button">Leave later</button><button class="btn main" id="now" type="button">Go now</button></div>`;
+    ${ex}
+    <div class="btns"><button class="btn" id="later" type="button">Leave later</button><button class="btn${now ? '' : ' main'}" id="now" type="button">Go now</button></div>
+    <button class="hintup" id="hintup" type="button">︿ Swipe up for rain graphs</button>
+    <div class="det">
+      <h4>${R.o0.k === 'optimize' ? 'Rain on the ride by departure time' : 'Rain on the ride if you leave at other times'}</h4>
+      <p class="small">Taller bar = more rain. Tap a bar to see that departure.</p>
+      <div class="scrollx" id="strip"></div>
+      <h4>Rain along the route, hour by hour</h4>
+      <p class="small">Each row is a point on your route. Outlined squares show where you'll be. Tap a square for details.</p>
+      <div class="scrollx" id="heat"></div>
+      <p class="small" id="heatInfo"></p>
+    </div>`;
+  renderStrip(); renderHeat();
+  $('#grab').onclick = () => setOpen(!sheetOpen);
+  $('#hintup').onclick = () => setOpen(true);
   $('#rClose').onclick = () => { R = null; routeLayer.clearLayers(); drawPlaces(false); renderBottom(); };
   $('#now').onclick = () => run({k: 'now'});
   $('#later').onclick = openLater;
+}
+
+// ---------- export ----------
+function gmapsUrl(){
+  const it = [S.from, ...S.vias, S.to], f = p => `${p.lat},${p.lon}`;
+  const way = S.vias.map(resolve).filter(Boolean).map(f).join('|');
+  const from = S.from.me ? '' : `&origin=${f(resolve(S.from))}`;
+  return `https://www.google.com/maps/dir/?api=1${from}&destination=${f(resolve(S.to))}${way ? '&waypoints=' + encodeURIComponent(way) : ''}&travelmode=driving`;
+}
+function wazeUrl(){
+  const p = resolve(S.vias.length ? S.vias[0] : S.to);
+  return `https://waze.com/ul?ll=${p.lat}%2C${p.lon}&navigate=yes`;
+}
+
+// ---------- rain graphs ----------
+let sheetOpen = false;
+function setOpen(v){ sheetOpen = v; const b = $('#bottom'); b.classList.toggle('open', v); if (!v) b.scrollTop = 0; }
+(function(){
+  const b = $('#bottom'); let y0 = null, st = 0;
+  b.addEventListener('touchstart', e => { if (!b.classList.contains('res')) return; y0 = e.touches[0].clientY; st = b.scrollTop; }, {passive: true});
+  b.addEventListener('touchmove', e => {
+    if (y0 == null) return; const dy = e.touches[0].clientY - y0;
+    if (!sheetOpen && dy < -25) { setOpen(true); y0 = null; }
+    else if (sheetOpen && st <= 0 && b.scrollTop <= 0 && dy > 70) { setOpen(false); y0 = null; }
+  }, {passive: true});
+  b.addEventListener('touchend', () => { y0 = null; });
+  b.addEventListener('wheel', e => {
+    if (!b.classList.contains('res')) return;
+    if (!sheetOpen && e.deltaY > 0) { e.preventDefault(); setOpen(true); }
+    else if (sheetOpen && e.deltaY < 0 && b.scrollTop <= 0) setOpen(false);
+  }, {passive: false});
+})();
+const CL = {dry: '#35d07f', low: '#c9d84a', mid: '#ffa53a', wet: '#ff5468'};
+function rainCellColor(p, r){
+  if (r >= 2.5) return '#9b6bff';
+  if (p >= 65 || r >= 1) return '#3f8ff0';
+  if (p >= 40 || r >= 0.3) return '#2f6fb8';
+  if (p >= 20 || r >= 0.1) return '#2d5d8f';
+  if (p >= 8) return '#22344d';
+  return '#1b2230';
+}
+function renderStrip(){
+  const box = $('#strip'), {cands, c, tz} = R; box.innerHTML = '';
+  if (!cands || !cands.length) { box.textContent = 'No other departure times left today.'; return; }
+  const bars = el('div', 'bars'), axis = el('div', 'axis');
+  const max = Math.max(...cands.map(x => x.cost), 1);
+  cands.forEach(x => {
+    const bar = el('div', 'bar' + (Math.abs(x.dep - c.dep) < 450 ? ' sel' : ''));
+    bar.style.height = (6 + 94 * x.cost / max) + '%'; bar.style.background = CL[x.cls];
+    bar.title = `Leave ${fmtClock(x.dep, tz)} → ${LABEL[x.cls]} · up to ${Math.round(x.maxProb)}%`;
+    bar.onclick = () => pickDeparture(x);
+    bars.appendChild(bar);
+    const t = fmtClock(x.dep, tz); axis.appendChild(el('span', null, t.endsWith(':00') && +t.slice(0, 2) % 2 === 0 ? t.slice(0, 2) : ''));
+  });
+  box.append(bars, axis);
+}
+function pickDeparture(x){
+  const same = Math.abs(x.dep - R.c0.dep) < 60;
+  R.c = same ? R.c0 : x;
+  R.o = same ? R.o0 : {k: 'depart', date: R.date, time: fmtClock(x.dep, R.tz)};
+  R.extra = same ? R.extra0 : '';
+  const sc = $('#bottom').scrollTop; drawRoute(); renderResult(); $('#bottom').scrollTop = sc;
+}
+function renderHeat(){
+  const {c, tl, wx, dayStart, names, tz} = R, S_ = tl.samples, box = $('#heat');
+  const h0 = Math.max(0, Math.floor((c.dep - dayStart) / 3600) - 3), h1 = Math.min(wx[0].H.time.length - 2, Math.ceil((c.arr - dayStart) / 3600) + 3);
+  const hours = []; for (let h = h0; h <= h1; h++) hours.push(h);
+  const grid = el('div', 'hgrid');
+  grid.style.gridTemplateColumns = `74px repeat(${hours.length}, minmax(22px, 1fr))`;
+  grid.appendChild(el('div', 'hcorner'));
+  hours.forEach(h => grid.appendChild(el('div', 'hhead', String(h % 24).padStart(2, '0'))));
+  const stopRow = {};
+  tl.stopTimes.forEach((st, k) => { let bi = 0, bd = Infinity; S_.forEach((s, i) => { const d = Math.abs(s.t - st.arrive); if (d < bd) { bd = d; bi = i; } }); stopRow[bi] = names[k]; });
+  S_.forEach((s, i) => {
+    const lab = stopRow[i] || `km ${Math.round(s.d / 1000)}`;
+    grid.appendChild(el('div', 'hlab', stopRow[i] ? `<b style="color:var(--text)">${esc(lab)}</b>` : lab));
+    const path = c.segs[i].hourIdx;
+    hours.forEach(h => {
+      const w = wxAt(wx[i], dayStart + h * 3600 + 1800);
+      const cell = el('div', 'hcell' + (w.hourIdx === path ? ' path' : ''));
+      cell.style.background = rainCellColor(w.prob, w.rate);
+      const info = `${lab} · ${String(h % 24).padStart(2, '0')}:00–${String((h + 1) % 24).padStart(2, '0')}:00 · ${Math.round(w.prob)}% chance · ${w.rate.toFixed(1)} mm/h${w.temp != null ? ' · ' + Math.round(w.temp) + '°C' : ''}`;
+      cell.title = info;
+      cell.onclick = () => { box.querySelectorAll('.hcell.tap').forEach(z => z.classList.remove('tap')); cell.classList.add('tap'); $('#heatInfo').textContent = info; };
+      grid.appendChild(cell);
+    });
+  });
+  box.innerHTML = ''; box.appendChild(grid);
 }
 
 // ---------- boot ----------
