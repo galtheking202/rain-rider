@@ -774,7 +774,7 @@ function renderPlan(){
       <div class="stat"><b>${isFinite(c.minT) ? Math.round(c.minT) + '–' + Math.round(c.maxT) + '°' : '–'}</b><span>Temp · gusts ${Math.round(c.maxGust)} km/h</span></div>
     </div>
     <ul class="itin">${stopsHtml}</ul>
-    ${warns.length ? warns.map(w => `<div class="warn">${esc(w)}</div>`).join('') : `<div class="good">No rain expected on any part of the route at these times.</div>`}
+    ${warns.length ? warns.map(w => `<div class="warn">${esc(w)}</div>`).join('') : c.cls === 'dry' ? `<div class="good">No rain expected on any part of the route at these times.</div>` : `<div class="warn">Showers are possible along the route (up to ${Math.round(c.maxProb)}% chance), but little or no rain is forecast. Keep the rain gear handy.</div>`}
     ${opt ? `<p class="hint" style="margin-top:12px"><b style="color:var(--text)">Dry / low-risk departure windows before your arrival time:</b> ${winTxt}</p>
     <div class="alts">${alts.map(a => `<div class="alt ${a.i === R.sel ? 'sel' : ''}" data-i="${a.i}"><b>${fmtT(a.c.dep)}</b> · <span style="color:${COLOR[a.c.cls]}">${LABEL[a.c.cls]}</span> · ${Math.round(a.c.maxProb)}%</div>`).join('')}</div>` : ''}
     <div class="row" style="margin-top:12px">
